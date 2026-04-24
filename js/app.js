@@ -34,5 +34,6 @@ buildRefTable();
 initSwitchboard();
 initShortCircuit();
 initDcCalculator();
+initMotorCalc();
 // Set default conductor mode button state
 document.getElementById('sb-mode-mm2').classList.add('active');

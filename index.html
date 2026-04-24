@@ -26,6 +26,7 @@
   <button class="tab" onclick="switchTab(1)">⇄ MM²↔AWG</button>
   <button class="tab" onclick="switchTab(2)" data-t="tab2">🌡 Rozváděč</button>
   <button class="tab" onclick="switchTab(3)" data-t="tab3">⚡ Zkrat Ik</button>
+  <button class="tab" onclick="switchTab(4)" data-t="tab4">⚡ Rozběh motoru</button>
 </div>
 
 <!-- TAB 0 -->
@@ -895,6 +896,165 @@
 
 </div></div>
 
+<!-- TAB 4 -->
+<div id="pane4" class="tab-pane"><div class="content">
+
+  <div class="card">
+    <div class="card-hdr" data-t="mscParamsHdr">📐 Parametry motoru</div>
+
+    <div class="fld" style="margin-bottom:12px">
+      <label data-t="mscMethod">Způsob rozběhu</label>
+      <div class="fld-inner">
+        <select id="msc-method" onchange="mscOnMethodChange()" style="padding-left:9px;font-size:13px">
+          <option value="dol"  data-t="mscDol">DOL (přímé spuštění)</option>
+          <option value="yd"   data-t="mscYd">Hvězda-trojúhelník (Y/Δ)</option>
+          <option value="soft" data-t="mscSoft">Softstartér</option>
+          <option value="vfd"  data-t="mscVfd">Frekvenční měnič (VFD)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row c2">
+      <div class="fld">
+        <label data-t="mscPn">Jmenovitý výkon Pn</label>
+        <div class="fld-inner"><input type="number" id="msc-pn" placeholder="např. 7.5" min="0" step="any"><span class="fld-unit">kW</span></div>
+      </div>
+      <div class="fld">
+        <label data-t="mscUn">Napájecí napětí Un</label>
+        <div class="fld-inner"><input type="number" id="msc-un" value="400" min="1"><span class="fld-unit">V</span></div>
+      </div>
+    </div>
+
+    <div class="row c3">
+      <div class="fld">
+        <label data-t="mscCosN">cos φn</label>
+        <div class="fld-inner"><input type="number" id="msc-cosn" value="0.85" min="0.01" max="1" step="0.01"></div>
+      </div>
+      <div class="fld">
+        <label data-t="mscEta">η (účinnost)</label>
+        <div class="fld-inner"><input type="number" id="msc-eta" value="0.92" min="0.01" max="1" step="0.01"></div>
+      </div>
+      <div class="fld">
+        <label data-t="mscKstart">kstart</label>
+        <div class="fld-inner"><input type="number" id="msc-kstart" value="6" min="0.5" max="20" step="0.1"></div>
+      </div>
+    </div>
+    <div class="fld-hint" id="msc-kstart-hint" style="margin-bottom:12px">DOL: kstart 5–8</div>
+
+    <div class="fld" style="margin-bottom:12px">
+      <label data-t="mscCosStart">Startovací cos φstart</label>
+      <div class="fld-inner"><input type="number" id="msc-cosstart" value="0.35" min="0.01" max="1" step="0.01"><span class="fld-unit">—</span></div>
+      <div class="fld-hint" data-t="mscCosStartHint">Typicky 0,35–0,5 při rozběhu motoru</div>
+    </div>
+
+    <div class="row c3">
+      <div class="fld">
+        <label data-t="mscS">Průřez kabelu S</label>
+        <div class="fld-inner"><select id="msc-s" style="padding-left:9px"></select></div>
+      </div>
+      <div class="fld">
+        <label data-t="mscL">Délka L (jednosměrně)</label>
+        <div class="fld-inner"><input type="number" id="msc-len" placeholder="např. 50" min="0" step="any"><span class="fld-unit">m</span></div>
+      </div>
+      <div class="fld">
+        <label data-t="mscMaterial">Materiál vodiče</label>
+        <div class="seg-group" style="margin-bottom:0">
+          <button class="seg-btn active msc-mat-btn" onclick="mscSetMaterial(this,'cu')">Cu</button>
+          <button class="seg-btn msc-mat-btn" onclick="mscSetMaterial(this,'al')">Al</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="fld" style="margin-bottom:12px">
+      <label data-t="mscIk">Zkratový proud přípojnice Ik</label>
+      <div class="fld-inner"><input type="number" id="msc-ik" value="10" min="0.01" step="0.1"><span class="fld-unit">kA</span></div>
+      <div class="fld-hint" data-t="mscIkHint">Z dokumentace DNO nebo výpočtu transformátoru</div>
+    </div>
+
+    <div id="msc-err" class="err-box"></div>
+    <button class="btn-primary" onclick="mscCalculate()" data-t="mscCalcBtn">⚡ Vypočítat pokles napětí</button>
+  </div>
+
+  <!-- Results -->
+  <div class="sc-res-card" id="msc-res-card">
+    <div class="res-lbl" data-t="mscResTitle">Výsledky — Pokles napětí při rozběhu</div>
+
+    <div class="sc-res-sub-lbl" data-t="mscResCurrTitle">Proudy motoru</div>
+    <div class="sc-imp-grid" style="grid-template-columns:1fr 1fr">
+      <div class="sc-imp-item">
+        <div class="sc-imp-lbl">In — jmenovitý</div>
+        <div class="sc-imp-val" id="msc-r-in">—</div>
+      </div>
+      <div class="sc-imp-item">
+        <div class="sc-imp-lbl">Istart — záběrný</div>
+        <div class="sc-imp-val" id="msc-r-istart">—</div>
+      </div>
+    </div>
+
+    <div class="divider" style="margin:14px 0"></div>
+    <div class="sc-res-sub-lbl" data-t="mscResImpTitle">Impedance</div>
+    <div class="sc-imp-grid">
+      <div class="sc-imp-item">
+        <div class="sc-imp-lbl">Zs (síť)</div>
+        <div class="sc-imp-val" id="msc-r-zs">—</div>
+      </div>
+      <div class="sc-imp-item">
+        <div class="sc-imp-lbl">Rs (síť)</div>
+        <div class="sc-imp-val" id="msc-r-rs">—</div>
+      </div>
+      <div class="sc-imp-item">
+        <div class="sc-imp-lbl">Xs (síť)</div>
+        <div class="sc-imp-val" id="msc-r-xs">—</div>
+      </div>
+      <div class="sc-imp-item">
+        <div class="sc-imp-lbl">Rcable</div>
+        <div class="sc-imp-val" id="msc-r-rcable">—</div>
+      </div>
+      <div class="sc-imp-item">
+        <div class="sc-imp-lbl">Xcable</div>
+        <div class="sc-imp-val" id="msc-r-xcable">—</div>
+      </div>
+      <div class="sc-imp-item">
+        <div class="sc-imp-lbl">R celkem</div>
+        <div class="sc-imp-val" id="msc-r-rtotal">—</div>
+      </div>
+      <div class="sc-imp-item">
+        <div class="sc-imp-lbl">X celkem</div>
+        <div class="sc-imp-val" id="msc-r-xtotal">—</div>
+      </div>
+    </div>
+
+    <div class="divider" style="margin:14px 0"></div>
+    <div class="sc-res-sub-lbl" data-t="mscResVdTitle">Pokles napětí</div>
+    <div class="sc-ik-grid" style="grid-template-columns:1fr 1fr">
+      <div class="sc-ik-card sc-ik-card-hl">
+        <div class="sc-ik-type" data-t="mscVdV">ΔU (V)</div>
+        <div class="sc-ik-range">
+          <span class="sc-ik-range-max" id="msc-r-du-v">—</span>
+        </div>
+      </div>
+      <div class="sc-ik-card">
+        <div class="sc-ik-type" data-t="mscVdPct">ΔU%</div>
+        <div class="sc-ik-range">
+          <span class="sc-ik-range-max" id="msc-r-du-pct">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider" style="margin:14px 0"></div>
+    <div class="sc-res-sub-lbl" data-t="mscResAssTitle">Hodnocení</div>
+    <div class="sc-trip-box sc-trip-ok" id="msc-trip-box">
+      <div class="sc-trip-status" id="msc-trip-status">—</div>
+      <div class="sc-trip-detail" id="msc-trip-detail">—</div>
+    </div>
+
+    <div class="divider" style="margin:14px 0"></div>
+    <div class="res-lbl" data-t="mscStepsTitle">Postup výpočtu</div>
+    <pre class="sb-steps" id="msc-steps"></pre>
+  </div>
+
+</div></div>
+
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -904,6 +1064,7 @@
 <script src="js/converter.js"></script>
 <script src="js/switchboard.js"></script>
 <script src="js/sc.js"></script>
+<script src="js/motor.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
