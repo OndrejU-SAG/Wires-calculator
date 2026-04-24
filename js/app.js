@@ -31,9 +31,9 @@ function showToast(msg, ms = 2000) {
 function toggleTheme() {
   const root = document.documentElement;
   const checkbox = document.getElementById('themeToggle');
-  const next = checkbox.checked ? 'dark' : 'light';
-  root.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
+  const isChecked = checkbox.checked;
+  root.setAttribute('data-theme', isChecked ? 'dark' : 'light');
+  localStorage.setItem('theme', isChecked ? 'dark' : 'light');
 }
 
 // Init
@@ -46,7 +46,7 @@ initMotorCalc();
 document.getElementById('sb-mode-mm2').classList.add('active');
 // Restore saved theme
 const _savedTheme = localStorage.getItem('theme') || 'dark';
-if (_savedTheme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+document.documentElement.setAttribute('data-theme', _savedTheme);
 document.getElementById('themeToggle').checked = _savedTheme === 'dark';
 // Restore saved language or use default
 const _savedLang = localStorage.getItem('language') || 'eng';
