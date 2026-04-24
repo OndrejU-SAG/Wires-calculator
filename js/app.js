@@ -1,8 +1,7 @@
 function setLang(l) {
   lang = l;
-  document.documentElement.lang = l === 'cze' ? 'cs' : 'en';
-  document.getElementById('btnCze').classList.toggle('active', l === 'cze');
-  document.getElementById('btnEng').classList.toggle('active', l === 'eng');
+  document.documentElement.lang = l === 'cze' ? 'cs' : l === 'deu' ? 'de' : 'en';
+  document.getElementById('langDropdown').value = l;
   document.querySelectorAll('[data-t]').forEach(el => {
     const k = el.dataset.t; if (T[l][k] !== undefined) el.textContent = T[l][k];
   });
@@ -15,6 +14,7 @@ function setLang(l) {
   onHChange(); liveWarn();
   buildRefTable();
   if (typeof scRefreshHints === 'function') scRefreshHints();
+  localStorage.setItem('language', l);
 }
 
 function switchTab(n) {
@@ -48,5 +48,7 @@ document.getElementById('sb-mode-mm2').classList.add('active');
 const _savedTheme = localStorage.getItem('theme') || 'dark';
 if (_savedTheme === 'light') document.documentElement.setAttribute('data-theme', 'light');
 document.getElementById('btnTheme').textContent = _savedTheme === 'light' ? '🌙' : '☀';
+// Restore saved language or use default
+const _savedLang = localStorage.getItem('language') || 'eng';
 // Apply default language (updates all data-t elements)
-setLang('eng');
+setLang(_savedLang);
