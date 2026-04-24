@@ -33,5 +33,6 @@ document.getElementById('voltage').value = 24;
 buildRefTable();
 initSwitchboard();
 initShortCircuit();
+initDcCalculator();
 // Set default conductor mode button state
 document.getElementById('sb-mode-mm2').classList.add('active');

@@ -377,6 +377,15 @@
 <!-- TAB 3 -->
 <div id="pane3" class="tab-pane"><div class="content">
 
+  <!-- AC / DC sub-tabs -->
+  <div class="sc-subtab-bar">
+    <button class="sc-subtab active" id="sc-sub-ac" onclick="scSwitchMode('ac')" data-t="scSubAc">⚡ AC (IEC 60909)</button>
+    <button class="sc-subtab" id="sc-sub-dc" onclick="scSwitchMode('dc')" data-t="scSubDc">🔋 DC</button>
+  </div>
+
+  <!-- ═══ AC PANEL ═══ -->
+  <div id="sc-ac-panel">
+
   <!-- SYSTEM PARAMETERS -->
   <div class="card">
     <div class="card-hdr" data-t="scSysHdr">⚙ Parametry soustavy</div>
@@ -384,12 +393,13 @@
       <div class="fld">
         <label data-t="scVoltage">Napájecí napětí</label>
         <div class="seg-group" style="margin-bottom:0">
-          <button class="seg-btn active" onclick="scSetVoltage(this,230)">230 V</button>
-          <button class="seg-btn" onclick="scSetVoltage(this,400)">400 V</button>
-          <button class="seg-btn" onclick="scSetVoltage(this,0)" data-t="scVCustom">Vlastní</button>
+          <button class="seg-btn" onclick="scSetVoltPreset(this,'ac1')" data-t="scVolt1ph">1-fáze 230 V</button>
+          <button class="seg-btn active" onclick="scSetVoltPreset(this,'ac3')" data-t="scVolt3ph">3-fáze 400 V</button>
+          <button class="seg-btn" onclick="scSetVoltPreset(this,'custom')" data-t="scVCustom">Vlastní</button>
         </div>
         <div id="sc-v-custom-row" style="display:none;margin-top:6px">
-          <div class="fld-inner"><input type="number" id="sc-un" value="230" min="1" oninput="scUpdateZsDisplay()"><span class="fld-unit">V</span></div>
+          <div class="fld-inner"><input type="number" id="sc-un" value="400" min="1" placeholder="U_LL" oninput="scUpdateZsDisplay()"><span class="fld-unit">V (U_LL)</span></div>
+          <div class="fld-hint" style="color:#b86000" data-t="scVoltCustomWarn">⚠ Zadejte U_LL (fáze-fáze). U₀ = U_LL / √3 se vypočítá automaticky.</div>
         </div>
       </div>
       <div class="fld">
@@ -400,6 +410,23 @@
         </div>
         <div class="fld-hint" id="sc-rho-hint">ρ = 0.01786 Ω·mm²/m (Cu, 20 °C)</div>
       </div>
+    </div>
+    <div class="fld" style="margin-bottom:12px">
+      <label data-t="scTempLbl">Teplota vodiče</label>
+      <div class="fld-inner">
+        <select id="sc-temp-sel" onchange="scSetTemp(this.value)" style="padding-left:9px;font-size:12.5px">
+          <option value="20" data-t="scTemp20">20°C — referenční (max. Ik, IEC 60909)</option>
+          <option value="70" selected data-t="scTemp70">70°C — max. provozní PVC</option>
+          <option value="90"  data-t="scTemp90">90°C — max. provozní XLPE/EPR</option>
+          <option value="160" data-t="scTemp160">160°C — max. zkratová PVC</option>
+          <option value="250" data-t="scTemp250">250°C — max. zkratová XLPE/EPR</option>
+          <option value="custom" data-t="scVCustom">Vlastní</option>
+        </select>
+      </div>
+      <div id="sc-temp-custom-row" style="display:none;margin-top:6px">
+        <div class="fld-inner"><input type="number" id="sc-temp-custom" value="20" min="1" max="400" oninput="scSetTempCustom()"><span class="fld-unit">°C</span></div>
+      </div>
+      <div class="fld-hint sc-temp-note" id="sc-temp-note" data-t="scTempNote">Min. Ik (ověření vybavení): 70 °C PVC / 90 °C XLPE  ·  Max. Ik (kontrola Icu): 20 °C</div>
     </div>
     <div class="fld">
       <label data-t="scNetwork">Typ sítě</label>
@@ -453,6 +480,11 @@
     <div class="sc-zs-display" id="sc-zs-display">
       <span data-t="scZsLabel">Zs =</span> <span id="sc-zs-val">—</span>
     </div>
+    <div class="fld" style="margin-top:10px">
+      <label data-t="scXR">X/R poměr zdroje</label>
+      <div class="fld-inner"><input type="number" id="sc-xr" value="1.0" min="0" max="20" step="0.1" oninput="scSetSourceXR()"><span class="fld-unit">—</span></div>
+      <div class="fld-hint" data-t="scXRHint">Typicky 0.5–2 pro LV transformátor; ovlivňuje Rs/Xs složky Zs</div>
+    </div>
   </div>
 
   <!-- CABLE -->
@@ -471,6 +503,11 @@
         <label data-t="scLen">Délka L</label>
         <div class="fld-inner"><input type="number" id="sc-len" value="20" min="0.1" step="any"><span class="fld-unit">m</span></div>
       </div>
+    </div>
+    <div class="fld" style="margin-top:8px">
+      <label data-t="scXpm">Reaktance kabelu x'</label>
+      <div class="fld-inner"><input type="number" id="sc-xpm" value="0.08" min="0" max="1" step="0.01" oninput="scSetCableXpm()"><span class="fld-unit">mΩ/m</span></div>
+      <div class="fld-hint" data-t="scXpmHint">0.08 mΩ/m jednožilový · 0.07 mΩ/m vícežilový (IEC 60909 typical)</div>
     </div>
     <div id="sc-tt-re-row" style="display:none">
       <div class="fld" style="margin-bottom:8px">
@@ -531,10 +568,14 @@
 
     <div class="sc-res-sub-lbl" data-t="scResImpTitle">Impedance smyčky</div>
     <div class="sc-imp-grid">
-      <div class="sc-imp-item"><div class="sc-imp-lbl">Zs (zdroj)</div><div class="sc-imp-val" id="sc-r-zs">—</div></div>
-      <div class="sc-imp-item"><div class="sc-imp-lbl">Rf (fáze)</div><div class="sc-imp-val" id="sc-r-rf">—</div></div>
-      <div class="sc-imp-item"><div class="sc-imp-lbl">Rpe</div><div class="sc-imp-val" id="sc-r-rpe">—</div></div>
-      <div class="sc-imp-item"><div class="sc-imp-lbl">Zloop (1-fáze)</div><div class="sc-imp-val" id="sc-r-zloop">—</div></div>
+      <div class="sc-imp-item"><div class="sc-imp-lbl">|Zs| (zdroj)</div><div class="sc-imp-val" id="sc-r-zs">—</div></div>
+      <div class="sc-imp-item"><div class="sc-imp-lbl">Rs</div><div class="sc-imp-val" id="sc-r-zs-r">—</div></div>
+      <div class="sc-imp-item"><div class="sc-imp-lbl">Xs</div><div class="sc-imp-val" id="sc-r-zs-x">—</div></div>
+      <div class="sc-imp-item"><div class="sc-imp-lbl">Rf (fáze, hot)</div><div class="sc-imp-val" id="sc-r-rf">—</div></div>
+      <div class="sc-imp-item"><div class="sc-imp-lbl">Xf (fáze)</div><div class="sc-imp-val" id="sc-r-xf">—</div></div>
+      <div class="sc-imp-item"><div class="sc-imp-lbl">Rpe (hot)</div><div class="sc-imp-val" id="sc-r-rpe">—</div></div>
+      <div class="sc-imp-item"><div class="sc-imp-lbl">Z3 loop (min)</div><div class="sc-imp-val" id="sc-r-z3">—</div></div>
+      <div class="sc-imp-item"><div class="sc-imp-lbl">Z1 loop (min)</div><div class="sc-imp-val" id="sc-r-z1">—</div></div>
     </div>
 
     <div class="divider" style="margin:14px 0"></div>
@@ -542,17 +583,29 @@
     <div class="sc-ik-grid">
       <div class="sc-ik-card">
         <div class="sc-ik-type" data-t="scIk3Lbl">Ik3 — 3-fázový</div>
-        <div class="sc-ik-val" id="sc-r-ik3">—</div>
+        <div class="sc-ik-range">
+          <span class="sc-ik-range-max" id="sc-r-ik3-max">—</span>
+          <span class="sc-ik-range-sep">↓</span>
+          <span class="sc-ik-range-min" id="sc-r-ik3-min">—</span>
+        </div>
         <div class="sc-ik-sub" data-t="scIk3Sub">symetrický zkrat</div>
       </div>
       <div class="sc-ik-card">
         <div class="sc-ik-type" data-t="scIk2Lbl">Ik2 — 2-fázový</div>
-        <div class="sc-ik-val" id="sc-r-ik2">—</div>
+        <div class="sc-ik-range">
+          <span class="sc-ik-range-max" id="sc-r-ik2-max">—</span>
+          <span class="sc-ik-range-sep">↓</span>
+          <span class="sc-ik-range-min" id="sc-r-ik2-min">—</span>
+        </div>
         <div class="sc-ik-sub" data-t="scIk2Sub">mezifázový zkrat</div>
       </div>
       <div class="sc-ik-card sc-ik-card-hl">
         <div class="sc-ik-type" data-t="scIk1Lbl">Ik1 — 1-fázový</div>
-        <div class="sc-ik-val" id="sc-r-ik1">—</div>
+        <div class="sc-ik-range">
+          <span class="sc-ik-range-max" id="sc-r-ik1-max">—</span>
+          <span class="sc-ik-range-sep">↓</span>
+          <span class="sc-ik-range-min" id="sc-r-ik1-min">—</span>
+        </div>
         <div class="sc-ik-sub" data-t="scIk1Sub">zemní zkrat — ověřuje ochranu</div>
       </div>
     </div>
@@ -564,15 +617,213 @@
       <div class="sc-trip-detail" id="sc-trip-detail">—</div>
     </div>
     <div class="sc-icu-box" id="sc-icu-box" style="display:none"></div>
+    <div class="sc-icu-warn" id="sc-icu-warn" style="display:none"></div>
 
     <div class="divider" style="margin:14px 0"></div>
     <div class="sc-res-sub-lbl" data-t="scResMaxLen">Max. délka kabelu (zaručené vybavení)</div>
     <div class="sc-maxlen-box sc-maxlen-ok" id="sc-maxlen-box">—</div>
 
     <div class="divider" style="margin:14px 0"></div>
+    <div class="sc-res-sub-lbl" data-t="scResAssumptions">Předpoklady výpočtu</div>
+    <pre class="sc-assumptions" id="sc-assumptions"></pre>
+
+    <div class="divider" style="margin:14px 0"></div>
     <div class="res-lbl">Postup výpočtu</div>
     <pre class="sb-steps" id="sc-steps"></pre>
+    <button class="btn-primary" id="sc-pdf-btn" onclick="scDownloadPdf()" style="margin-top:8px" data-t="scPdfBtn">⬇ Stáhnout PDF</button>
   </div>
+
+  </div><!-- /sc-ac-panel -->
+
+  <!-- ═══ DC PANEL ═══ -->
+  <div id="sc-dc-panel" style="display:none">
+
+    <!-- DC SUPPLY -->
+    <div class="card">
+      <div class="card-hdr" data-t="dcSrcHdr">🔋 DC Supply</div>
+      <div class="fld" style="margin-bottom:12px">
+        <label data-t="dcUdc">Supply voltage U_DC</label>
+        <div class="fld-inner"><input type="number" id="dc-udc" value="48" min="1" step="any"><span class="fld-unit">V</span></div>
+      </div>
+      <div class="fld" style="margin-bottom:10px">
+        <label data-t="dcSrcType">Source type</label>
+        <div class="fld-inner">
+          <select id="dc-src-type" onchange="dcOnSrcTypeChange()" style="padding-left:9px">
+            <option value="known_ik" data-t="dcSrcKnownIk">Known Ik (short-circuit current)</option>
+            <option value="known_r"  data-t="dcSrcKnownR">Known R_source</option>
+            <option value="smps"     data-t="dcSrcSmps">SMPS (current-limited)</option>
+          </select>
+        </div>
+      </div>
+      <div id="dc-src-ik-row">
+        <div class="fld">
+          <label data-t="dcIkSrc">Source short-circuit current Ik</label>
+          <div class="fld-inner"><input type="number" id="dc-ik-src" value="100" min="0.01" step="any" oninput="dcUpdateRsrcDisplay()"><span class="fld-unit">A</span></div>
+          <div class="fld-hint" data-t="dcIkSrcHint">R_source = U_DC / Ik_source is derived automatically</div>
+        </div>
+      </div>
+      <div id="dc-src-r-row" style="display:none">
+        <div class="fld">
+          <label data-t="dcRsrc">Source resistance R_source</label>
+          <div class="fld-inner"><input type="number" id="dc-r-src" value="100" min="0" step="any" oninput="dcUpdateRsrcDisplay()"><span class="fld-unit">mΩ</span></div>
+        </div>
+      </div>
+      <div id="dc-src-smps-row" style="display:none">
+        <div class="fld">
+          <label data-t="dcIlim">SMPS current limit I_lim</label>
+          <div class="fld-inner"><input type="number" id="dc-i-lim" value="20" min="0.01" step="any"><span class="fld-unit">A</span></div>
+        </div>
+        <div class="sc-icu-warn" style="display:block;margin-top:8px" data-t="dcSmpsWarn">⚠ SMPS current-limited — magnetic trip not guaranteed, verify thermally</div>
+      </div>
+      <div class="sc-computed-row" id="dc-rsrc-display" style="margin-top:10px">
+        <span>R_source =</span> <span id="dc-rsrc-val">—</span>
+      </div>
+    </div>
+
+    <!-- DC CABLE -->
+    <div class="card">
+      <div class="card-hdr" data-t="dcCableHdr">🔌 Cable</div>
+      <div class="row c2" style="margin-bottom:10px">
+        <div class="fld">
+          <label data-t="dcMaterial">Conductor material</label>
+          <div class="seg-group" style="margin-bottom:0">
+            <button class="seg-btn active" onclick="dcSetMaterial(this,'cu')">Cu</button>
+            <button class="seg-btn" onclick="dcSetMaterial(this,'al')">Al</button>
+          </div>
+        </div>
+        <div class="fld">
+          <label data-t="dcTempLbl">Conductor temperature (min Ik)</label>
+          <div class="fld-inner">
+            <select id="dc-temp-sel" onchange="dcSetTemp(this.value)" style="padding-left:9px;font-size:12.5px">
+              <option value="20"  data-t="scTemp20">20°C — reference (max Ik)</option>
+              <option value="70" selected data-t="scTemp70">70°C — PVC operating</option>
+              <option value="90"  data-t="scTemp90">90°C — XLPE operating</option>
+              <option value="custom" data-t="scVCustom">Custom</option>
+            </select>
+          </div>
+          <div id="dc-temp-custom-row" style="display:none;margin-top:6px">
+            <div class="fld-inner"><input type="number" id="dc-temp-custom" value="70" min="1" max="400" oninput="dcSetTempCustom()"><span class="fld-unit">°C</span></div>
+          </div>
+          <div class="fld-hint" id="dc-rho-hint">ρ = 0.01724 Ω·mm²/m (Cu, 20°C)</div>
+        </div>
+      </div>
+      <div class="row c3">
+        <div class="fld">
+          <label data-t="scSphase">Phase conductor S</label>
+          <div class="fld-inner"><select id="dc-s-phase" style="padding-left:9px"></select></div>
+        </div>
+        <div class="fld">
+          <label data-t="scSpe">Return / PE conductor Spe</label>
+          <div class="fld-inner"><select id="dc-s-pe" style="padding-left:9px"></select></div>
+        </div>
+        <div class="fld">
+          <label data-t="scLen">Cable length L</label>
+          <div class="fld-inner"><input type="number" id="dc-len" value="10" min="0.1" step="any"><span class="fld-unit">m</span></div>
+        </div>
+      </div>
+      <div class="fld" style="margin-top:8px">
+        <label data-t="dcLpm">Cable inductance l'</label>
+        <div class="fld-inner"><input type="number" id="dc-lpm" value="1.5" min="0" step="0.1"><span class="fld-unit">μH/m</span></div>
+        <div class="fld-hint" data-t="dcLpmHint">Typical: 1.5 μH/m — used for time constant τ display only</div>
+      </div>
+    </div>
+
+    <!-- DC PROTECTIVE DEVICE -->
+    <div class="card">
+      <div class="card-hdr" data-t="dcDevHdr">🔒 Protective Device</div>
+      <div class="row c2">
+        <div class="fld">
+          <label data-t="dcDevType">Device type</label>
+          <div class="fld-inner">
+            <select id="dc-dev-type" onchange="dcOnDevTypeChange()" style="padding-left:9px">
+              <option value="mcb"  data-t="scDevMcb">Circuit Breaker (MCB)</option>
+              <option value="fuse" data-t="scDevFuse">Fuse gG</option>
+            </select>
+          </div>
+        </div>
+        <div class="fld">
+          <label data-t="scDevIn">Rated current In</label>
+          <div class="fld-inner"><input type="number" id="dc-dev-in" value="16" min="0.1" step="any" oninput="dcUpdateTripHint()"><span class="fld-unit">A</span></div>
+        </div>
+      </div>
+      <div class="row c2">
+        <div class="fld" id="dc-curve-fld">
+          <label data-t="scDevCurve">Trip curve</label>
+          <div class="fld-inner">
+            <select id="dc-dev-curve" onchange="dcUpdateTripHint()" style="padding-left:9px">
+              <option value="B">B (3–5 × In)</option>
+              <option value="C" selected>C (5–10 × In)</option>
+              <option value="D">D (10–20 × In)</option>
+            </select>
+          </div>
+          <div class="fld-hint" id="dc-trip-hint">—</div>
+        </div>
+        <div class="fld">
+          <label data-t="dcIcuDc">DC-rated Icu</label>
+          <div class="fld-inner"><input type="number" id="dc-icu" value="6" min="0.001" step="0.1"><span class="fld-unit">kA</span></div>
+          <div class="fld-hint" data-t="dcIcuHint">DC Icu is typically lower than AC Icu — verify device datasheet for DC voltage rating</div>
+        </div>
+      </div>
+      <div id="dc-err" class="err-box"></div>
+      <button class="btn-primary" onclick="dcCalculate()" data-t="dcCalcBtn">⚡ Calculate DC Fault Current</button>
+    </div>
+
+    <!-- DC RESULTS -->
+    <div class="sc-res-card" id="dc-res-card">
+      <div class="res-lbl" data-t="dcResTitle">Results — DC Fault Current</div>
+
+      <div class="sc-res-sub-lbl" data-t="dcResImpTitle">Resistances</div>
+      <div class="sc-imp-grid">
+        <div class="sc-imp-item"><div class="sc-imp-lbl">R_source</div><div class="sc-imp-val" id="dc-r-rsrc">—</div></div>
+        <div class="sc-imp-item"><div class="sc-imp-lbl">R_cable (hot)</div><div class="sc-imp-val" id="dc-r-rcable">—</div></div>
+        <div class="sc-imp-item"><div class="sc-imp-lbl">R_PE/return (hot)</div><div class="sc-imp-val" id="dc-r-rpe">—</div></div>
+        <div class="sc-imp-item"><div class="sc-imp-lbl">R_loop (min)</div><div class="sc-imp-val" id="dc-r-rloop">—</div></div>
+      </div>
+
+      <div class="divider" style="margin:14px 0"></div>
+      <div class="sc-res-sub-lbl" data-t="dcResFaultTitle">Fault Currents &amp; Time Constant</div>
+      <div class="sc-ik-grid" style="grid-template-columns:1fr 1fr">
+        <div class="sc-ik-card sc-ik-card-hl">
+          <div class="sc-ik-type" data-t="dcIkMaxLbl">Ik_max (cold, 20°C)</div>
+          <div class="sc-ik-range">
+            <span class="sc-ik-range-max" id="dc-r-ik-max">—</span>
+          </div>
+          <div class="sc-ik-sub">R_source + R_cable_cold + R_PE_cold</div>
+        </div>
+        <div class="sc-ik-card">
+          <div class="sc-ik-type" data-t="dcIkMinLbl">Ik_min (hot, operating T)</div>
+          <div class="sc-ik-range">
+            <span class="sc-ik-range-max" id="dc-r-ik-min">—</span>
+          </div>
+          <div class="sc-ik-sub">protection verification</div>
+        </div>
+      </div>
+      <div class="sc-imp-grid" style="margin-top:10px;grid-template-columns:1fr 1fr">
+        <div class="sc-imp-item"><div class="sc-imp-lbl">Time constant τ</div><div class="sc-imp-val" id="dc-r-tau">—</div></div>
+        <div class="sc-imp-item"><div class="sc-imp-lbl">95% of Ik_max in ~3τ</div><div class="sc-imp-val" id="dc-r-3tau">—</div></div>
+      </div>
+
+      <div class="divider" style="margin:14px 0"></div>
+      <div class="sc-res-sub-lbl" data-t="scResTripTitle">Trip Verification</div>
+      <div class="sc-trip-box sc-trip-ok" id="dc-trip-box">
+        <div class="sc-trip-status" id="dc-trip-status">—</div>
+        <div class="sc-trip-detail" id="dc-trip-detail">—</div>
+      </div>
+      <div class="sc-icu-warn" id="dc-smps-warn" style="display:none" data-t="dcSmpsWarnResult">⚠ SMPS current limit may fold back under fault — magnetic trip not reliable. Consider eFuse or verify SMPS short-circuit characteristic.</div>
+      <div class="sc-icu-box" id="dc-icu-box" style="display:none"></div>
+      <div class="sc-icu-warn" id="dc-icu-warn" style="display:none"></div>
+
+      <div class="divider" style="margin:14px 0"></div>
+      <div class="sc-res-sub-lbl" data-t="scResMaxLen">Max. cable length (guaranteed trip)</div>
+      <div class="sc-maxlen-box sc-maxlen-ok" id="dc-maxlen-box">—</div>
+
+      <div class="divider" style="margin:14px 0"></div>
+      <div class="res-lbl">Step-by-Step Calculation</div>
+      <pre class="sb-steps" id="dc-steps"></pre>
+      <button class="btn-primary" id="dc-pdf-btn" onclick="dcDownloadPdf()" style="margin-top:8px" data-t="dcPdfBtn">⬇ Download PDF</button>
+    </div>
+
+  </div><!-- /sc-dc-panel -->
 
 </div></div>
 

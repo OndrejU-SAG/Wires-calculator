@@ -227,11 +227,31 @@ option{background:#1C262A;color:var(--on-surf)}
 .sc-zs-display span:last-child{color:var(--pri);font-weight:600}
 .sc-import-btn{background:transparent;border:1.5px dashed var(--pri-con);color:var(--pri);border-radius:var(--r-md);padding:8px 16px;font-size:12.5px;font-family:'Roboto',sans-serif;cursor:pointer;transition:all .2s;margin-top:8px;display:block;width:100%;text-align:center}
 .sc-import-btn:hover{background:var(--pri-con);border-style:solid}
+.sc-temp-note{white-space:normal;overflow:visible;text-overflow:unset;line-height:1.5}
+/* Fault current range display */
+.sc-ik-range{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.sc-ik-range-max{font-size:15px;font-weight:700;color:var(--pri);}
+.sc-ik-range-min{font-size:12px;font-weight:600;color:var(--on-surf-var);}
+.sc-ik-range-sep{font-size:10px;color:var(--on-surf-var);opacity:.6;}
+/* Trip partial (uncertain) state */
+.sc-trip-partial{background:rgba(200,140,0,.12);border:1px solid rgba(200,140,0,.4);}
+.sc-trip-partial .sc-trip-status{color:#c88c00;}
+/* Icu 80% warning */
+.sc-icu-warn{background:rgba(200,100,0,.12);border:1px solid rgba(200,100,0,.4);color:#b86000;border-radius:6px;padding:8px 12px;font-size:12.5px;margin-top:6px;}
+/* Assumptions block */
+.sc-assumptions{background:var(--surf-2);border:1px solid var(--surf-3);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--on-surf-var);font-family:monospace;white-space:pre-wrap;line-height:1.6;margin:0;}
+
+/* SC sub-tab bar (AC / DC) */
+.sc-subtab-bar{display:flex;border-radius:var(--r-full);overflow:hidden;border:1.5px solid var(--out);margin-bottom:14px}
+.sc-subtab{flex:1;padding:10px 6px;font-size:13px;font-weight:500;background:transparent;border:none;border-right:1.5px solid var(--out);color:var(--on-surf-var);cursor:pointer;font-family:'Roboto',sans-serif;transition:all .2s;letter-spacing:.2px}
+.sc-subtab:last-child{border-right:none}
+.sc-subtab.active{background:var(--sec-con);color:var(--on-sec-con);font-weight:600}
+.sc-subtab:hover:not(.active){background:rgba(126,205,233,.08)}
 
 @media(max-width:500px){
   .row.c2,.row.c3,.con-grid,.vd-grid,.conv-res,.ref-grid{grid-template-columns:1fr}
   .len-row{grid-template-columns:1fr}
   .sb-enc-tabs{width:100%}
-  .sc-imp-grid{grid-template-columns:1fr 1fr}
+  .sc-imp-grid{grid-template-columns:1fr 1fr 1fr 1fr}
   .sc-ik-grid{grid-template-columns:1fr}
 }
