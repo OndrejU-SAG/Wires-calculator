@@ -15,11 +15,22 @@
     <h1 data-t="appTitle">Kalkulátor průřezu vodiče</h1>
     <div class="app-bar-sub" data-t="appSub">Měď · IEC 60228 · Úbytek napětí + Zatížitelnost</div>
   </div>
-  <div class="lang-seg">
-    <button id="btnCze" class="lang-b" onclick="setLang('cze')">CZ</button>
-    <button id="btnEng" class="lang-b active" onclick="setLang('eng')">EN</button>
+  <div class="bar-end">
+    <div class="mu-select-wrapper">
+      <select id="langDropdown" onchange="setLang(this.value)" class="mu-select">
+        <option value="eng" selected>EN</option>
+        <option value="cze">CZ</option>
+        <option value="deu">DE</option>
+      </select>
+      <span class="mu-select-arrow">▼</span>
+    </div>
+    <label class="mu-switch">
+      <input type="checkbox" id="themeToggle" onchange="toggleTheme()">
+      <span class="mu-switch-track">
+        <span class="mu-switch-thumb"></span>
+      </span>
+    </label>
   </div>
-  <button id="btnTheme" class="theme-btn" onclick="toggleTheme()">☀</button>
 </div>
 
 <div class="tab-bar">
