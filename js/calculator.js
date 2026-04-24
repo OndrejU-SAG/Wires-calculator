@@ -45,16 +45,31 @@ function onHChange() {
   }
 }
 
+function getTempValue() {
+  const sel = document.getElementById('tempPreset');
+  if (sel.value === 'custom') return parseFloat(document.getElementById('tempCustom').value);
+  return parseFloat(sel.value);
+}
+
+function onTempPresetChange() {
+  const isCustom = document.getElementById('tempPreset').value === 'custom';
+  document.getElementById('tempCustomRow').style.display = isCustom ? 'block' : 'none';
+  liveWarn();
+}
+
 function liveWarn() {
   const pct = parseFloat(document.getElementById('vdropPct').value);
-  const Tm = parseFloat(document.getElementById('temp').value);
+  const Tm = getTempValue();
   const Ta = parseFloat(document.getElementById('ambient').value);
+  const isCustomTemp = document.getElementById('tempPreset').value === 'custom';
   const w = [];
   if (!isNaN(pct)) { if (pct > 10) w.push({ t: 'warn', m: T[lang].warnVd10 }); else if (pct > 5) w.push({ t: 'warn', m: T[lang].warnVd5 }); }
   if (!isNaN(Tm) && !isNaN(Ta)) {
     if (Tm - Ta < 10) w.push({ t: 'warn', m: T[lang].warnThermal });
-    if (Tm > 105) w.push({ t: 'warn', m: T[lang].warnTemp105 });
-    else if (Tm > 90) w.push({ t: 'info', m: T[lang].infoTemp90 });
+    if (isCustomTemp) {
+      if (Tm > 105) w.push({ t: 'warn', m: T[lang].warnTemp105 });
+      else if (Tm > 90) w.push({ t: 'info', m: T[lang].infoTemp90 });
+    }
   }
   document.getElementById('warnArea').innerHTML = w.map(x => `<div class="warn-chip ${x.t === 'info' ? 'info' : ''}">${x.m}</div>`).join('');
 }
@@ -66,7 +81,7 @@ function calculate() {
   const V = parseFloat(document.getElementById('voltage').value);
   const I = parseFloat(document.getElementById('current').value);
   const Ta = parseFloat(document.getElementById('ambient').value);
-  const Tm = parseFloat(document.getElementById('temp').value);
+  const Tm = getTempValue();
   const pct = parseFloat(document.getElementById('vdropPct').value);
   let L = parseFloat(document.getElementById('length').value);
   const unit = document.getElementById('lenUnit').value, dist = document.getElementById('distType').value, h = getH();
