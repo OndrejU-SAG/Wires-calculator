@@ -582,14 +582,21 @@ function scCalculate() {
 
   const xpm = scCableXpm * 1e-3;  // mΩ/m → Ω/m
 
-  // Phase conductor impedances
-  const Rf_max = rhoRef * L / S;    // R at 20°C (for max Ik)
-  const Rf_hot = rhoHot * L / S;    // R at hot  (for min Ik)
-  const Xf     = xpm * L;           // cable reactance (same for max/min)
+  // Skin effect (IEC 60287, 50 Hz, k_s = 1 for Cu stranded)
+  // rhoRef/S and rhoHot/S give R_DC per metre in Ω/m (rho in Ω·mm²/m, S in mm²)
+  const ys_ph_ref = skinEffectYs(50, rhoRef / S);
+  const ys_ph_hot = skinEffectYs(50, rhoHot / S);
+  const ys_pe_ref = skinEffectYs(50, rhoRef / Spe);
+  const ys_pe_hot = skinEffectYs(50, rhoHot / Spe);
 
-  // PE conductor impedances
-  const Rpe_max = rhoRef * L / Spe;
-  const Rpe_hot = rhoHot * L / Spe;
+  // Phase conductor impedances with skin effect
+  const Rf_max = rhoRef * L / S * (1 + ys_ph_ref);
+  const Rf_hot = rhoHot * L / S * (1 + ys_ph_hot);
+  const Xf     = xpm * L;
+
+  // PE conductor impedances with skin effect
+  const Rpe_max = rhoRef * L / Spe * (1 + ys_pe_ref);
+  const Rpe_hot = rhoHot * L / Spe * (1 + ys_pe_hot);
   const Xpe     = xpm * L;
 
   // ── 3-phase loop impedances ────────────────────────────────────────────────
@@ -653,7 +660,7 @@ function scCalculate() {
   let L_max = -1;
   if (Ztarget > 0) {
     const A  = Rs + Re;
-    const B  = rhoHot * (1 / S + 1 / Spe);
+    const B  = rhoHot * (1 + ys_ph_hot) / S + rhoHot * (1 + ys_pe_hot) / Spe;
     const C  = Xs;
     const D  = 2 * xpm;
     const qa = B * B + D * D;

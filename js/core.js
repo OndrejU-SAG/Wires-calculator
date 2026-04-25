@@ -55,26 +55,51 @@ function suggestFuse(Im) {
   return f;
 }
 
-function fullCalc({ V, I, Tamb, Tmax, pct, Lone, sys, h }) {
+// Skin effect y_s (IEC 60287): xs² = 8πf·ks / (10⁷·R_DC), ks = 1 for Cu stranded
+// R_DC_per_m in Ω/m; returns y_s where R_AC = R_DC · (1 + y_s)
+function skinEffectYs(fHz, R_DC_per_m) {
+  if (fHz <= 0 || R_DC_per_m <= 0) return 0;
+  const xs2 = (8 * Math.PI * fHz * 1e-7) / R_DC_per_m;
+  const xs4 = xs2 * xs2;
+  return xs4 / (192 + 0.8 * xs4);
+}
+
+function fullCalc({ V, I, Tamb, Tmax, pct, Lone, sys, h, freq = 50 }) {
   const rho = RHO20 * (1 + ALPHA * (Tmax - 20)), Vd = V * pct / 100;
-  const vdEx = sys === 'ac3' ? (Math.sqrt(3) * I * rho * Lone) / Vd : (I * rho * 2 * Lone) / Vd;
+  const fEff = sys === 'dc' ? 0 : freq;
+
+  // Initial DC-based VD area; use to estimate skin effect for sizing
+  const vdEx_dc = sys === 'ac3' ? (Math.sqrt(3) * I * rho * Lone) / Vd : (I * rho * 2 * Lone) / Vd;
+  const ys0 = skinEffectYs(fEff, rho / vdEx_dc);
+
+  // Scale VD area by (1 + ys): R_AC = R_DC·(1+ys) means same VD requires larger A
+  const vdEx = vdEx_dc * (1 + ys0);
+
+  // Ampacity: thermal balance uses R_AC heat generation → substitute rho·(1+ys) for rho
   const dT = Tmax - Tamb; if (dT <= 0) throw 'temp';
-  const K = Math.sqrt(h * 2 * Math.sqrt(Math.PI) * dT / rho);
+  const K = Math.sqrt(h * 2 * Math.sqrt(Math.PI) * dT / (rho * (1 + ys0)));
   const ampEx = Math.pow(I / K, 4 / 3);
+
   const vdMm2 = vdEx * 1e6, ampMm2 = ampEx * 1e6;
   if (!isFinite(vdMm2) || vdMm2 <= 0) throw 'vd';
   if (!isFinite(ampMm2) || ampMm2 <= 0) throw 'amp';
   const vdStd = stdMm2Up(vdMm2), ampStd = stdMm2Up(ampMm2);
   const recStd = Math.max(vdStd, ampStd), recAwg = stdAwgUp(Math.max(vdMm2, ampMm2));
   const A_rec = recStd / 1e6;
-  const vdActV = sys === 'ac3' ? (Math.sqrt(3) * I * rho * Lone) / A_rec : (I * rho * 2 * Lone) / A_rec;
-  const pLoss = I * I * rho * (sys === 'ac3' ? 3 : 2) * Lone / A_rec;
-  const K2 = Math.sqrt(h * 2 * Math.sqrt(Math.PI) * dT / rho);
-  const wireAmp = K2 * Math.pow(A_rec, 0.75);
+
+  // R_DC and R_AC for the recommended standard size
+  const rDC = rho / A_rec;
+  const ys  = skinEffectYs(fEff, rDC);
+  const rAC = rDC * (1 + ys);
+
+  const vdActV = sys === 'ac3' ? (Math.sqrt(3) * I * rAC * Lone) : (I * rAC * 2 * Lone);
+  const pLoss = I * I * rAC * (sys === 'ac3' ? 3 : 2) * Lone;
+  const wireAmp = Math.sqrt(h * 2 * Math.sqrt(Math.PI) * dT / (rho * (1 + ys))) * Math.pow(A_rec, 0.75);
   return {
     vdMm2, ampMm2, vdStd, ampStd, recStd, recAwg,
     vdAwg: stdAwgUp(vdMm2), ampAwg: stdAwgUp(ampMm2),
     vdActV, vdActP: vdActV / V * 100, pLoss, wireAmp,
-    fuse: suggestFuse(wireAmp), ampLimits: ampStd >= vdStd, rho, Vd
+    fuse: suggestFuse(wireAmp), ampLimits: ampStd >= vdStd, rho, Vd,
+    rDC, rAC, ys
   };
 }

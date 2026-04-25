@@ -53,8 +53,8 @@ function mscCalculate() {
   const In     = (Pn * 1000) / (Math.sqrt(3) * Un * cosN * eta);
   const Istart = kstart * In;
 
-  // 2. Cable impedance
-  const Rcable = rho * L / S;
+  // 2. Cable impedance (R_AC includes skin effect at 50 Hz)
+  const Rcable = rho * L / S * (1 + skinEffectYs(50, rho / S));
   const Xcable = 0.08 * L / 1000;
 
   // 3. Network impedance at busbar

@@ -299,6 +299,8 @@ const T = {
     selRecShortCable: 'Kabellänge reduzieren oder Querschnitt erhöhen, um den minimalen Kurzschlussstrom zu steigern',
     selNoRecs: 'Keine Empfehlungen — Schutz ist vollständig selektiv.',
     selErrFill: 'Bitte alle Felder des vorgelagerten Geräts ausfüllen (positive Werte).',
+    frequency: 'Frequenz', freqHz: 'Hz',
+    skinEffectWarn: 'Stromverdrängungseffekt erhöht den Widerstand um {pct} % — im Ergebnis berücksichtigt.',
   },
   cze: {
     appTitle: 'Kalkulátor průřezu vodiče', appSub: 'Měď · IEC 60228 · Úbytek napětí + Zatížitelnost',
@@ -600,6 +602,8 @@ const T = {
     selRecShortCable: 'Zkraťte délku kabelu nebo zvyšte průřez pro zvýšení minimálního zkratového proudu',
     selNoRecs: 'Žádná doporučení — ochrana je plně selektivní.',
     selErrFill: 'Vyplňte všechna pole nadřazeného přístroje (kladné hodnoty).',
+    frequency: 'Frekvence', freqHz: 'Hz',
+    skinEffectWarn: 'Povrchový jev zvyšuje odpor o {pct} % — zahrnuto ve výpočtu.',
   },
   eng: {
     appTitle: 'Wire Size Calculator', appSub: 'Copper · IEC 60228 · Voltage Drop + Ampacity',
@@ -901,6 +905,8 @@ const T = {
     selRecShortCable: 'Reduce cable length or increase conductor cross-section to raise minimum fault current',
     selNoRecs: 'No recommendations — protection is fully selective.',
     selErrFill: 'Fill in all upstream device fields (positive values).',
+    frequency: 'Frequency', freqHz: 'Hz',
+    skinEffectWarn: 'Skin effect increases resistance by {pct}% — considered in calculation.',
   }
 };
 

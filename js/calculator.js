@@ -7,6 +7,7 @@ function setSystem(btn, t) {
   btn.closest('.seg-group').querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('voltage').value = SYS_V[t];
+  document.getElementById('freqRow').style.display = t !== 'dc' ? 'block' : 'none';
   liveWarn();
 }
 
@@ -76,7 +77,7 @@ function liveWarn() {
 
 function calculate() {
   const errEl = document.getElementById('errCalc');
-  const fail = m => { errEl.textContent = m; errEl.style.display = 'block'; document.getElementById('results').style.display = 'none'; document.getElementById('wiCard').style.display = 'none'; };
+  const fail = m => { errEl.textContent = m; errEl.style.display = 'block'; document.getElementById('results').style.display = 'none'; document.getElementById('wiCard').style.display = 'none'; document.getElementById('skinEffectArea').innerHTML = ''; };
   errEl.style.display = 'none';
   const V = parseFloat(document.getElementById('voltage').value);
   const I = parseFloat(document.getElementById('current').value);
@@ -84,6 +85,7 @@ function calculate() {
   const Tm = getTempValue();
   const pct = parseFloat(document.getElementById('vdropPct').value);
   let L = parseFloat(document.getElementById('length').value);
+  const freq = parseFloat(document.getElementById('frequency').value) || 50;
   const unit = document.getElementById('lenUnit').value, dist = document.getElementById('distType').value, h = getH();
   if ([V, I, Ta, Tm, pct, L].some(isNaN)) return fail(T[lang].errFillAll);
   if (V <= 0 || I <= 0 || L <= 0 || pct <= 0) return fail(T[lang].errPositive);
@@ -92,9 +94,9 @@ function calculate() {
   if (unit === 'cm') L /= 100; else if (unit === 'mm') L /= 1000;
   const Lone = dist === 'total' ? L / 2 : L;
   let res;
-  try { res = fullCalc({ V, I, Tamb: Ta, Tmax: Tm, pct, Lone, sys: sysType, h }); }
+  try { res = fullCalc({ V, I, Tamb: Ta, Tmax: Tm, pct, Lone, sys: sysType, h, freq }); }
   catch (e) { return fail(T[lang].errFillAll); }
-  lastParams = { V, I, Tamb: Ta, Tmax: Tm, pct, Lone, sys: sysType, h };
+  lastParams = { V, I, Tamb: Ta, Tmax: Tm, pct, Lone, sys: sysType, h, freq };
   document.getElementById('card-vd').classList.toggle('lim', !res.ampLimits);
   document.getElementById('card-amp').classList.toggle('lim', res.ampLimits);
   document.getElementById('fVd').textContent = sysType === 'ac3' ? 'A = √3·I·ρ·L / V_drop' : 'A = I·ρ·2L / V_drop';
@@ -128,7 +130,17 @@ function calculate() {
   const dl = dist === 'total'
     ? (Lone * 2).toPrecision(4) + ' ' + unit + ' ' + T[lang].noteTotal
     : Lone.toPrecision(4) + ' ' + unit + ' ' + T[lang].noteOneway;
-  document.getElementById('rNote').textContent = `${sysLbl} · ${dl} · ${I}A · T_amb=${Ta}°C · T_max=${Tm}°C · ρ=${(res.rho * 1e8).toFixed(3)}×10⁻⁸Ω·m · h=${h}W/m²K`;
+  let noteStr = `${sysLbl} · ${dl} · ${I}A · T_amb=${Ta}°C · T_max=${Tm}°C · ρ=${(res.rho * 1e8).toFixed(3)}×10⁻⁸Ω·m · h=${h}W/m²K`;
+  if (sysType !== 'dc') {
+    noteStr += ` · R_DC=${(res.rDC * 1e3).toFixed(4)} mΩ/m · R_AC=${(res.rAC * 1e3).toFixed(4)} mΩ/m @ ${freq}Hz`;
+  }
+  document.getElementById('rNote').textContent = noteStr;
+  const seArea = document.getElementById('skinEffectArea');
+  if (sysType !== 'dc' && res.ys > 0.05) {
+    seArea.innerHTML = `<div class="warn-chip info">${T[lang].skinEffectWarn.replace('{pct}', (res.ys * 100).toFixed(1))}</div>`;
+  } else {
+    seArea.innerHTML = '';
+  }
   document.getElementById('results').style.display = 'block';
   document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   const slMax = Math.max(I * 4, 50);
