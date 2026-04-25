@@ -398,8 +398,8 @@ All calculations use standard IEC values:
 ## Browser Compatibility
 
 The calculator is a progressive web application compatible with:
-- Chrome / Edge 
-- Firefox (Only Firefox tested)
+- Chrome / Edge (recommended)
+- Firefox
 - Safari
 - Can be added to home screen for offline use once cached
 

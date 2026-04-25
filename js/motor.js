@@ -437,121 +437,216 @@ async function mscDownloadPdf() {
   const r = window._mscSizLast;
   if (!r) { alert('Run the calculation first.'); return; }
 
+  if (!window.jspdf && !window.jsPDF) { alert('jsPDF not loaded'); return; }
   const { jsPDF } = window.jspdf || window;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const PW = 210, PH = 297, M = 14, CW = PW - 2 * M;
-  const engineer = (document.getElementById('msc-engineer') || {}).value || '';
+  const PW = 210, PH = 297, M = 15;
+  const CW = PW - M * 2;
+  const ACC = [26, 82, 118];   // accent blue — same as switchboard
+  const GRN = [0, 150, 80];    // pass green
+
+  const engineer  = (document.getElementById('msc-engineer') || {}).value || '';
+  const STANDARD  = 'IEC 60364-5-52 / IEC 60287';
+  const TITLE_P1  = 'Motor Cable Sizing Calculation';
+  const TITLE_P2  = 'Motor Cable Sizing — Step-by-Step Calculation';
+
+  // ── Helpers (same patterns as switchboard.js) ─────────────────────────
+
+  function drawFooter(pageNum, totalPages) {
+    pdfMakeFooter(doc, { PW, PH, M, pageNum, totalPages, engineer, standard: STANDARD });
+  }
+
+  function pdfSection(y, title) {
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(...ACC);
+    doc.text(title, M, y);
+    return y + 6;
+  }
+
+  function inputTable(y, rows) {
+    const RH = 6.5;
+    rows.forEach(([label, value], i) => {
+      if (i % 2 === 0) { doc.setFillColor(245, 247, 250); doc.rect(M, y, CW, RH, 'F'); }
+      doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.1);
+      doc.rect(M, y, CW, RH);
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
+      doc.text(pdfSafe(label), M + 3, y + 4.5);
+      doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
+      doc.text(pdfSafe(String(value)), M + CW - 3, y + 4.5, { align: 'right' });
+      y += RH;
+    });
+    return y;
+  }
 
   // ── Page 1: Inputs + Results ──────────────────────────────────────────
-  pdfMakeHeader(doc, { PW, M, title: pdfSafe(T[lang].mscSizResTitle) });
+  pdfMakeHeader(doc, { PW, M, title: TITLE_P1 });
   let y = M + 22;
 
-  // Input table
-  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
-  doc.text('Input Parameters', M, y);
-  y += 5;
+  y = pdfSection(y, 'Input Summary');
+  y = inputTable(y, [
+    ['Motor rated power Pn',                r.Pn + ' kW'],
+    ['System voltage Un',                   r.Un + ' V'],
+    ['Rated power factor cos phi_n',        String(r.cosN)],
+    ['Motor efficiency eta',                String(r.eta)],
+    ['Starting method',                     pdfSafe(r.methodName)],
+    ['Starting current multiplier kstart',  String(r.kstart)],
+    ['Starting power factor cos phi_start', String(r.cosStart)],
+    ['Cable length L (one-way)',            r.L + ' m'],
+    ['Conductor material',                  r.matLabel],
+    ['Cable type',                          r.cableType === 'single' ? 'Single-core (X = 0.08 Ohm/km)' : 'Multi-core (X = 0.07 Ohm/km)'],
+    ['Installation method (IEC 60364-5-52)', r.instLabel],
+    ['System',                              r.phases === 'ac3' ? 'Three-phase AC (AC3)' : 'Single-phase AC (AC1)'],
+    ['Max running voltage drop limit',      r.maxVdRun + ' %'],
+    ['Max starting voltage drop limit',     r.maxVdStart + ' %'],
+  ]);
+  y += 8;
 
-  const inputs = [
-    ['Motor rated power Pn',             r.Pn + ' kW'],
-    ['System voltage Un',                r.Un + ' V'],
-    ['Rated power factor cos phi_n',     String(r.cosN)],
-    ['Motor efficiency eta',             String(r.eta)],
-    ['Starting method',                  r.methodName],
-    ['Starting multiplier kstart',       String(r.kstart)],
-    ['Starting p.f. cos phi_start',      String(r.cosStart)],
-    ['Cable length L (one-way)',          r.L + ' m'],
-    ['Conductor material',               r.matLabel],
-    ['Cable type',                       r.cableType === 'single' ? 'Single-core (X = 0.08 Ohm/km)' : 'Multi-core (X = 0.07 Ohm/km)'],
-    ['Installation method',              r.instLabel],
-    ['System',                           r.phases === 'ac3' ? 'Three-phase AC (AC3)' : 'Single-phase AC (AC1)'],
-    ['Max running voltage drop',         r.maxVdRun + ' %'],
-    ['Max starting voltage drop',        r.maxVdStart + ' %'],
-  ];
+  y = pdfSection(y, 'Results');
+  y += 2;
 
-  const ROW_H = 5.5, LBL_X = M + 2, VAL_X = M + CW * 0.52 + 2;
-  inputs.forEach(([label, value], i) => {
-    const ry = y + i * ROW_H;
-    if (i % 2 === 0) { doc.setFillColor(245, 248, 250); doc.rect(M, ry, CW, ROW_H, 'F'); }
-    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(90, 90, 90);
-    doc.text(pdfSafe(label), LBL_X, ry + 3.8);
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
-    doc.text(pdfSafe(value), VAL_X, ry + 3.8);
-  });
-  y += inputs.length * ROW_H + 8;
-
-  // Results headline
   if (r.res) {
-    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
-    doc.text(pdfSafe(T[lang].mscSizRecommended) + ':', M, y);
-    y += 5;
-    doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 90, 150);
-    doc.text(r.res.S + ' mm\xb2', M, y);
+    // ── Centered green recommended cable box ─────────────────────────────
+    const BOX_W = CW * 0.56;
+    const BOX_X = M + (CW - BOX_W) / 2;
+    const BOX_H = 32;
+
+    doc.setFillColor(230, 248, 235);
+    doc.setDrawColor(...GRN);
+    doc.setLineWidth(1.0);
+    doc.rect(BOX_X, y, BOX_W, BOX_H, 'FD');
+
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(40, 100, 60);
+    doc.text('Recommended Cable Size', PW / 2, y + 7.5, { align: 'center' });
+
+    doc.setFontSize(24); doc.setFont('helvetica', 'bold'); doc.setTextColor(...GRN);
+    doc.text(r.res.S + ' mm\xb2', PW / 2, y + 21, { align: 'center' });
+
     const awgStr = MM2_AWG_STR[r.res.S] || '';
     if (awgStr) {
-      doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
-      doc.text('(' + awgStr + ')', M + 32, y);
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(60, 100, 70);
+      doc.text(awgStr, PW / 2, y + 28, { align: 'center' });
     }
-    y += 9;
+    y += BOX_H + 8;
 
-    // Results table
-    const TH = 6;
-    doc.setFillColor(0, 60, 100); doc.rect(M, y, CW, TH, 'F');
-    doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
-    const cx = [M + 2, M + 76, M + 128, M + 162];
-    ['Parameter', 'Value', 'Limit', 'Status'].forEach((h, i) => doc.text(h, cx[i], y + 4));
-    y += TH;
+    // ── Results comparison table (blue header, same as switchboard dataTable) ─
+    const RH = 6.5;
+    const colW = [78, 50, 34, 18];   // param | value | limit | status
 
+    doc.setFillColor(...ACC); doc.rect(M, y, CW, RH, 'F');
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
+    doc.text('Parameter',       M + 2,                               y + 4.5);
+    doc.text('Value',           M + colW[0] + colW[1] - 2,          y + 4.5, { align: 'right' });
+    doc.text('Limit',           M + colW[0] + colW[1] + colW[2] - 2, y + 4.5, { align: 'right' });
+    doc.text('Status',          M + CW - 2,                          y + 4.5, { align: 'right' });
+    y += RH;
+
+    const vfd  = r.method === 'vfd';
     const rows = [
-      ['Rated current In',     r.In.toFixed(2) + ' A',             '—',                    null],
-      ['Cable ampacity Iz',    r.res.Iz + ' A',                    '>= ' + r.In.toFixed(1) + ' A',  r.res.ampOk],
-      ['Running volt. drop',   r.res.dU_run_pct.toFixed(2) + ' % (' + r.res.dU_run.toFixed(2) + ' V)', '<= ' + r.maxVdRun + ' %', r.res.vdRunOk],
-      ['Starting volt. drop',
-        r.method === 'vfd' ? 'Negligible (VFD)' : r.res.dU_start_pct.toFixed(2) + ' % (' + r.res.dU_start.toFixed(2) + ' V)',
-        r.method === 'vfd' ? '—'                : '<= ' + r.maxVdStart + ' %',
-        r.method === 'vfd' ? null               : r.res.vdStartOk],
+      ['Rated current In',      r.In.toFixed(2) + ' A',                                                    '—',                          null],
+      ['Cable ampacity Iz',     r.res.Iz + ' A',                                                            '>= ' + r.In.toFixed(1) + ' A',  r.res.ampOk],
+      ['Running voltage drop',  r.res.dU_run_pct.toFixed(2) + ' % (' + r.res.dU_run.toFixed(2) + ' V)',    '<= ' + r.maxVdRun + ' %',    r.res.vdRunOk],
+      ['Starting voltage drop', vfd ? 'Negligible (VFD)' : r.res.dU_start_pct.toFixed(2) + ' % (' + r.res.dU_start.toFixed(2) + ' V)',
+                                vfd ? '—'                : '<= ' + r.maxVdStart + ' %',
+                                vfd ? null               : r.res.vdStartOk],
     ];
 
     rows.forEach(([label, value, limit, pass], i) => {
-      i % 2 === 0 ? doc.setFillColor(245, 248, 250) : doc.setFillColor(255, 255, 255);
-      doc.rect(M, y, CW, TH, 'F');
-      doc.setFont('helvetica', 'normal'); doc.setTextColor(30, 30, 30); doc.setFontSize(8);
-      doc.text(pdfSafe(label), cx[0], y + 4);
-      doc.text(pdfSafe(value), cx[1], y + 4);
-      doc.text(pdfSafe(limit), cx[2], y + 4);
-      if (pass === true)       { doc.setTextColor(0, 160, 80);  doc.setFont('helvetica', 'bold'); doc.text('PASS', cx[3], y + 4); }
-      else if (pass === false) { doc.setTextColor(200, 40, 40); doc.setFont('helvetica', 'bold'); doc.text('FAIL', cx[3], y + 4); }
-      else                     { doc.setTextColor(120, 120, 120); doc.text('N/A', cx[3], y + 4); }
-      y += TH;
+      i % 2 === 0 ? doc.setFillColor(245, 247, 250) : doc.setFillColor(255, 255, 255);
+      doc.rect(M, y, CW, RH, 'F');
+      doc.setDrawColor(215, 215, 215); doc.setLineWidth(0.1); doc.rect(M, y, CW, RH);
+
+      doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(40, 40, 40);
+      doc.text(pdfSafe(label), M + 2, y + 4.5);
+      doc.text(pdfSafe(value), M + colW[0] + colW[1] - 2,           y + 4.5, { align: 'right' });
+      doc.text(pdfSafe(limit), M + colW[0] + colW[1] + colW[2] - 2, y + 4.5, { align: 'right' });
+
+      if (pass === true)       { doc.setTextColor(0, 160, 80);   doc.setFont('helvetica', 'bold'); doc.text('PASS', M + CW - 2, y + 4.5, { align: 'right' }); }
+      else if (pass === false) { doc.setTextColor(200, 40, 40);  doc.setFont('helvetica', 'bold'); doc.text('FAIL', M + CW - 2, y + 4.5, { align: 'right' }); }
+      else                     { doc.setTextColor(120, 120, 120);                                   doc.text('N/A',  M + CW - 2, y + 4.5, { align: 'right' }); }
+      y += RH;
     });
-    y += 4;
   } else {
+    // No cable found — red failure box
+    const BOX_H = 20;
+    doc.setFillColor(255, 235, 235);
+    doc.setDrawColor(200, 40, 40); doc.setLineWidth(0.8);
+    doc.rect(M, y, CW, BOX_H, 'FD');
     doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(200, 40, 40);
-    doc.text(pdfSafe(T[lang].mscSizFailAll), M, y);
-    y += 10;
+    doc.text('No standard cable (up to 630 mm\xb2) satisfies all criteria', PW / 2, y + 9, { align: 'center' });
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
+    doc.text('In = ' + r.In.toFixed(2) + ' A  |  L = ' + r.L + ' m  |  ' + pdfSafe(r.instLabel), PW / 2, y + 16, { align: 'center' });
+    y += BOX_H + 6;
   }
 
-  // ── Page 2: Step-by-step ───────────────────────────────────────────────
+  // ── Page 2: Step-by-step (same rendering as switchboard.js) ──────────
   doc.addPage();
-  pdfMakeHeader(doc, { PW, M, title: pdfSafe(T[lang].mscSizResTitle) + ' — ' + pdfSafe(T[lang].mscStepsTitle) });
+  pdfMakeHeader(doc, { PW, M, title: TITLE_P2 });
   y = M + 22;
 
-  doc.setFontSize(7.5); doc.setFont('courier', 'normal'); doc.setTextColor(40, 40, 40);
-  const lines = doc.splitTextToSize(pdfSafe(r.stepsText), CW);
-  lines.forEach(line => {
-    if (y > PH - M - 14) {
+  y = pdfSection(y, 'Step-by-Step Calculation');
+  y += 3;
+
+  // Split into blocks separated by blank lines (same pattern as switchboard)
+  const blocks = r.stepsText.split('\n\n');
+  blocks.forEach(block => {
+    const lines = block.split('\n');
+    const blockH = lines.length * 4.5 + 6;
+    if (y + blockH > PH - M - 12) {
       doc.addPage();
-      pdfMakeHeader(doc, { PW, M, title: pdfSafe(T[lang].mscSizResTitle) });
+      pdfMakeHeader(doc, { PW, M, title: TITLE_P2 });
       y = M + 22;
     }
-    doc.text(line, M, y);
-    y += 3.8;
+
+    lines.forEach(line => {
+      if (!line.trim()) return;
+
+      // Box-drawing separator line → draw an actual PDF rule
+      if (/^[─-╿\-]{5,}/.test(line.trim())) {
+        doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3);
+        doc.line(M, y - 1.5, PW - M, y - 1.5);
+        return;
+      }
+
+      const trimmed   = line.trimStart();
+      const indented  = line.startsWith('   ');
+      const isStep    = /^\d+\./.test(trimmed);      // "1. Rated current"
+      const isSubStep = /^[a-d]\)/.test(trimmed);    // "a) Ampacity check"
+
+      if (isStep) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...ACC);
+      } else if (isSubStep) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(50, 60, 80);
+      } else {
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(40, 40, 40);
+      }
+
+      doc.setFontSize(8.5);
+      const textLines = doc.splitTextToSize(pdfSafe(trimmed), CW - (indented ? 6 : 0));
+      textLines.forEach(tl => {
+        if (y > PH - M - 12) {
+          doc.addPage();
+          pdfMakeHeader(doc, { PW, M, title: TITLE_P2 });
+          y = M + 22;
+        }
+        doc.text(tl, M + (indented ? 6 : 0), y);
+        y += 4.5;
+      });
+    });
+
+    doc.setDrawColor(210, 210, 210); doc.setLineWidth(0.2);
+    doc.line(M, y + 1, PW - M, y + 1);
+    y += 6;
   });
 
-  // Footer on every page
+  // Fix footers on all pages (same pattern as switchboard.js)
   const totalPages = doc.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
-    pdfMakeFooter(doc, { PW, PH, M, pageNum: p, totalPages, engineer, standard: 'IEC 60364-5-52 / IEC 60287' });
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, PH - M - 8, PW, 25, 'F');
+    drawFooter(p, totalPages);
   }
 
   doc.save('motor-cable-sizing.pdf');
