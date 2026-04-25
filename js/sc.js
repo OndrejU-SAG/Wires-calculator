@@ -584,45 +584,15 @@ async function scDownloadPdf() {
     const CW = PW - M * 2;
     const ACC = [26, 82, 118];
 
-    const today = new Date();
-    const ds = [today.getDate(), today.getMonth() + 1, today.getFullYear()]
-      .map((v, i) => i < 2 ? String(v).padStart(2, '0') : v).join('.');
-    const engineer = document.getElementById('sb-engineer')?.value.trim() || '';
+    const engineer = document.getElementById('sc-engineer')?.value.trim() || '';
 
     function drawHeader(pageNum, totalPages) {
-      if (sbLogoB64) {
-        try {
-          const logoH = 10;
-          const logoW = sbLogoNW && sbLogoNH ? (sbLogoNW / sbLogoNH) * logoH : 25;
-          doc.addImage(sbLogoB64, 'PNG', M, M, logoW, logoH);
-        } catch (e) {}
-      }
-      const co = sbCompany || {};
-      const addrLines = [
-        co.name,
-        co.street,
-        [co.zip, co.city].filter(Boolean).join(' '),
-        co.country,
-      ].filter(Boolean);
-      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
-      addrLines.forEach((line, i) => doc.text(line, PW - M, M + i * 3.8, { align: 'right' }));
-
-      const rY = M + 14;
-      doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3);
-      doc.line(M, rY, PW - M, rY);
-      doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
-      doc.text('Short-Circuit Current Calculation', M, rY - 2);
-
+      pdfMakeHeader(doc, { PW, M, title: 'Short-Circuit Current Calculation' });
       drawFooter(pageNum, totalPages);
     }
 
     function drawFooter(pageNum, totalPages) {
-      doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3);
-      doc.line(M, PH - M - 6, PW - M, PH - M - 6);
-      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(120, 120, 120);
-      doc.text(ds + (engineer ? '  |  ' + engineer : ''), M, PH - M - 2);
-      doc.text('Page ' + pageNum + ' of ' + totalPages, PW / 2, PH - M - 2, { align: 'center' });
-      doc.text('IEC 60909 / IEC 60364', PW - M, PH - M - 2, { align: 'right' });
+      pdfMakeFooter(doc, { PW, PH, M, pageNum, totalPages, engineer, standard: 'IEC 60909 / IEC 60364' });
     }
 
     function secTitle(y, title) {
@@ -1580,37 +1550,15 @@ async function dcDownloadPdf() {
     const CW = PW - M * 2;
     const ACC = [26, 82, 118];
 
-    const today = new Date();
-    const ds = [today.getDate(), today.getMonth() + 1, today.getFullYear()]
-      .map((v, i) => i < 2 ? String(v).padStart(2, '0') : v).join('.');
-    const engineer = document.getElementById('sb-engineer')?.value.trim() || '';
+    const engineer = document.getElementById('dc-engineer')?.value.trim() || '';
 
     function drawHeader(pageNum, totalPages) {
-      if (sbLogoB64) {
-        try {
-          const logoH = 10;
-          const logoW = sbLogoNW && sbLogoNH ? (sbLogoNW / sbLogoNH) * logoH : 25;
-          doc.addImage(sbLogoB64, 'PNG', M, M, logoW, logoH);
-        } catch (e) {}
-      }
-      const co = sbCompany || {};
-      const addrLines = [co.name, co.street, [co.zip, co.city].filter(Boolean).join(' '), co.country].filter(Boolean);
-      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
-      addrLines.forEach((line, i) => doc.text(line, PW - M, M + i * 3.8, { align: 'right' }));
-      const rY = M + 14;
-      doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3); doc.line(M, rY, PW - M, rY);
-      doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
-      doc.text('DC Short-Circuit Calculation', M, rY - 2);
+      pdfMakeHeader(doc, { PW, M, title: 'DC Short-Circuit Calculation' });
       drawFooter(pageNum, totalPages);
     }
 
     function drawFooter(pageNum, totalPages) {
-      doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3);
-      doc.line(M, PH - M - 6, PW - M, PH - M - 6);
-      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(120, 120, 120);
-      doc.text(ds + (engineer ? '  |  ' + engineer : ''), M, PH - M - 2);
-      doc.text('Page ' + pageNum + ' of ' + totalPages, PW / 2, PH - M - 2, { align: 'center' });
-      doc.text('IEC 61660 / Resistive method', PW - M, PH - M - 2, { align: 'right' });
+      pdfMakeFooter(doc, { PW, PH, M, pageNum, totalPages, engineer, standard: 'IEC 61660 / Resistive method' });
     }
 
     function secTitle(y, title) {

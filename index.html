@@ -656,7 +656,9 @@
     <div class="divider" style="margin:14px 0"></div>
     <div class="res-lbl">Postup výpočtu</div>
     <pre class="sb-steps" id="sc-steps"></pre>
-    <button class="btn-primary" id="sc-pdf-btn" onclick="scDownloadPdf()" style="margin-top:8px" data-t="scPdfBtn">⬇ Stáhnout PDF</button>
+    <div class="fld" style="margin:10px 0 6px"><label data-t="pdfEngineer">Engineer</label>
+      <div class="fld-inner"><input type="text" id="sc-engineer" placeholder="Name…"></div></div>
+    <button class="btn-primary" id="sc-pdf-btn" onclick="scDownloadPdf()" style="margin-top:6px" data-t="scPdfBtn">⬇ Stáhnout PDF</button>
   </div>
 
   </div><!-- /sc-ac-panel -->
@@ -914,7 +916,9 @@
       <div class="divider" style="margin:14px 0"></div>
       <div class="res-lbl">Step-by-Step Calculation</div>
       <pre class="sb-steps" id="dc-steps"></pre>
-      <button class="btn-primary" id="dc-pdf-btn" onclick="dcDownloadPdf()" style="margin-top:8px" data-t="dcPdfBtn">⬇ Download PDF</button>
+      <div class="fld" style="margin:10px 0 6px"><label data-t="pdfEngineer">Engineer</label>
+        <div class="fld-inner"><input type="text" id="dc-engineer" placeholder="Name…"></div></div>
+      <button class="btn-primary" id="dc-pdf-btn" onclick="dcDownloadPdf()" style="margin-top:6px" data-t="dcPdfBtn">⬇ Download PDF</button>
     </div>
 
   </div><!-- /sc-dc-panel -->
@@ -1231,7 +1235,9 @@
     <div class="warn-chip" id="tray-stack-warn" data-t="tray_warnStack" style="display:none;margin-top:8px">⚠ Estimated stack height exceeds tray height</div>
     <div class="warn-chip" id="tray-mixed-warn" data-t="tray_warnMixed" style="display:none;margin-top:8px">⚠ Mixed cable types — stricter 40% rule applies</div>
 
-    <button class="btn-primary" onclick="trayDownloadPdf()" style="margin-top:12px" data-t="tray_pdfBtn">⬇ Download PDF</button>
+    <div class="fld" style="margin:10px 0 6px"><label data-t="pdfEngineer">Engineer</label>
+      <div class="fld-inner"><input type="text" id="tray-engineer" placeholder="Name…"></div></div>
+    <button class="btn-primary" onclick="trayDownloadPdf()" style="margin-top:6px" data-t="tray_pdfBtn">⬇ Download PDF</button>
   </div>
 
 </div></div>
@@ -1241,6 +1247,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/core.js"></script>
+<script src="js/pdf.js"></script>
 <script src="js/calculator.js"></script>
 <script src="js/converter.js"></script>
 <script src="js/switchboard.js"></script>

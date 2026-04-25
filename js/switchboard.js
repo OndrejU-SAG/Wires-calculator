@@ -56,13 +56,7 @@ function awgToMm2Sw(n) {
   return Math.PI * Math.pow(d / 2, 2);
 }
 
-function pdfSafe(s) {
-  return String(s)
-    .replace(/ρ/g, 'rho').replace(/Ω/g, 'Ohm').replace(/²/g, '^2')
-    .replace(/×/g, 'x').replace(/·/g, '*').replace(/Δ/g, 'dT')
-    .replace(/≤/g, '<=').replace(/≥/g, '>=').replace(/π/g, 'pi')
-    .replace(/[^\x00-\xFF]/g, '?');
-}
+/* pdfSafe is provided by pdf.js (loaded before this module) */
 
 function fmtAwgLabel(n) {
   const map = { 0: '1/0', '-1': '2/0', '-2': '3/0', '-3': '4/0' };
@@ -87,9 +81,7 @@ let sbHeatMode = 'calc';
 let sbVentOpen = false;
 let sbRowId = 0;
 
-let sbLogoB64 = null;
-let sbLogoNW = 0, sbLogoNH = 0;  // natural pixel dimensions for aspect ratio
-let sbCompany = null;
+/* Logo / company data loaded by pdf.js into _pdfLogoB64, _pdfLogoNW, _pdfLogoNH, _pdfCompany */
 
 /* ===================================================================
    INIT
@@ -97,28 +89,6 @@ let sbCompany = null;
 function initSwitchboard() {
   buildTs8Dropdown();
   buildFanPresets();
-
-  fetch('assets/logo.png')
-    .then(r => r.blob())
-    .then(blob => new Promise(res => {
-      const url = URL.createObjectURL(blob);
-      const img = new Image();
-      img.onload = () => {
-        sbLogoNW = img.naturalWidth;
-        sbLogoNH = img.naturalHeight;
-        URL.revokeObjectURL(url);
-        const fr = new FileReader();
-        fr.onload = () => { sbLogoB64 = fr.result; res(); };
-        fr.readAsDataURL(blob);
-      };
-      img.src = url;
-    }))
-    .catch(() => {});
-
-  fetch('assets/company.json')
-    .then(r => r.json())
-    .then(d => { sbCompany = d; })
-    .catch(() => {});
 
   sbAddConductorRow();
   sbAddDeviceRow();
@@ -598,54 +568,16 @@ async function sbDownloadPdf() {
     const CW = PW - M * 2;
     const ACC = [26, 82, 118]; // accent blue
 
-    // ---- HEADER HELPER ----
-    const today = new Date();
-    const ds = [today.getDate(), today.getMonth() + 1, today.getFullYear()]
-      .map((v, i) => i < 2 ? String(v).padStart(2, '0') : v).join('.');
+    // ---- HEADER / FOOTER (shared helpers from pdf.js) ----
     const engineer = document.getElementById('sb-engineer')?.value.trim() || '';
 
     function drawHeader(pageNum, totalPages) {
-      // Logo — maintain aspect ratio, fixed height 10mm
-      if (sbLogoB64) {
-        try {
-          const logoH = 10;
-          const logoW = sbLogoNW && sbLogoNH ? (sbLogoNW / sbLogoNH) * logoH : 25;
-          doc.addImage(sbLogoB64, 'PNG', M, M, logoW, logoH);
-        } catch (e) {}
-      }
-      // Company address (right-aligned, compact — fits within header band)
-      const co = sbCompany || {};
-      const addrLines = [
-        co.name,
-        co.street,
-        [co.zip, co.city].filter(Boolean).join(' '),
-        co.country
-      ].filter(Boolean);
-      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
-      addrLines.forEach((line, i) => {
-        doc.text(line, PW - M, M + i * 3.8, { align: 'right' });
-      });
-
-      // Rule below header block
-      const rY = M + 14;
-      doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3);
-      doc.line(M, rY, PW - M, rY);
-
-      // Document title (left, above rule)
-      doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
-      doc.text('Switchboard Temperature Rise Calculation', M, rY - 2);
-
+      pdfMakeHeader(doc, { PW, M, title: 'Switchboard Temperature Rise Calculation' });
       drawFooter(pageNum, totalPages);
     }
 
     function drawFooter(pageNum, totalPages) {
-      doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3);
-      doc.line(M, PH - M - 6, PW - M, PH - M - 6);
-      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(120, 120, 120);
-      const footerLeft = ds + (engineer ? '  |  ' + engineer : '');
-      doc.text(footerLeft, M, PH - M - 2);
-      doc.text(`Page ${pageNum} of ${totalPages}`, PW / 2, PH - M - 2, { align: 'center' });
-      doc.text('IEC 61439 / IEC 60890', PW - M, PH - M - 2, { align: 'right' });
+      pdfMakeFooter(doc, { PW, PH, M, pageNum, totalPages, engineer, standard: 'IEC 61439 / IEC 60890' });
     }
 
     // ---- TABLE HELPER ----

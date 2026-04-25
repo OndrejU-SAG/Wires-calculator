@@ -365,6 +365,93 @@ function trayCalculate() {
 }
 
 /* ===================================================================== */
+/*  CALCULATION STEPS (for PDF)                                           */
+/* ===================================================================== */
+function _trayBuildSteps(r) {
+  const lines = [];
+  let step = 1;
+
+  // Step 1 — Tray / conduit usable area
+  if (r.geomMode === 'rect') {
+    lines.push(
+      step++ + '. Tray usable area:\n' +
+      '   A_tray = W x H = ' + r.geom.w + ' mm x ' + r.geom.h + ' mm\n' +
+      '   A_tray = ' + r.trayArea.toFixed(1) + ' mm^2'
+    );
+  } else if (r.geom.d) {
+    lines.push(
+      step++ + '. Conduit usable area (round):\n' +
+      '   A = pi x (d/2)^2 = pi x (' + (r.geom.d / 2).toFixed(1) + ')^2\n' +
+      '   A = ' + r.trayArea.toFixed(1) + ' mm^2'
+    );
+  } else {
+    lines.push(
+      step++ + '. Duct usable area (oval):\n' +
+      '   A = pi x (ow/2) x (oh/2) = pi x ' + (r.geom.ow / 2).toFixed(1) + ' x ' + (r.geom.oh / 2).toFixed(1) + '\n' +
+      '   A = ' + r.trayArea.toFixed(1) + ' mm^2'
+    );
+  }
+
+  // Step 2 — Individual cable cross-sectional areas
+  lines.push(step++ + '. Individual cable areas  (A_i = pi x (OD/2)^2 x count):');
+  const areaStrings = [];
+  _trayRows.forEach((row, i) => {
+    const singleA = Math.PI * Math.pow(row.od / 2, 2);
+    const totalA  = singleA * row.count;
+    areaStrings.push(totalA.toFixed(1));
+    lines.push(
+      '   Cable ' + (i + 1) + ': OD = ' + row.od.toFixed(1) + ' mm, n = ' + row.count + ', type = ' + row.type + '\n' +
+      '   A_' + (i + 1) + ' = pi x (' + row.od.toFixed(1) + '/2)^2 x ' + row.count +
+      ' = ' + singleA.toFixed(2) + ' x ' + row.count + ' = ' + totalA.toFixed(1) + ' mm^2'
+    );
+  });
+
+  // Step 3 — Total cable area
+  lines.push(
+    step++ + '. Total cable area:\n' +
+    '   A_cables = ' + areaStrings.join(' + ') + ' = ' + r.totalCableArea.toFixed(1) + ' mm^2'
+  );
+
+  // Step 4 — Fill percentage
+  lines.push(
+    step++ + '. Fill percentage:\n' +
+    '   Fill% = (A_cables / A_tray) x 100\n' +
+    '   Fill% = (' + r.totalCableArea.toFixed(1) + ' / ' + r.trayArea.toFixed(1) + ') x 100\n' +
+    '   Fill% = ' + r.fillPct.toFixed(2) + '%'
+  );
+
+  // Step 5 — Fill limit determination
+  const typesList = r.types.join(', ');
+  lines.push(
+    step++ + '. Fill limit (standard: ' + r.standardName + '):\n' +
+    '   Cable types present: ' + typesList + '\n' +
+    '   Applied rule: ' + r.ruleDesc + '\n' +
+    '   Fill limit = ' + r.activeLimit + '%'
+  );
+
+  // Step 6 — Assessment
+  const verdict = r.fillPct > r.activeLimit
+    ? 'EXCEEDED (' + r.fillPct.toFixed(1) + '% > ' + r.activeLimit + '%)'
+    : r.fillPct > r.activeLimit * 0.9
+      ? 'WARNING — within 10% of limit (' + r.fillPct.toFixed(1) + '% vs ' + r.activeLimit + '%)'
+      : 'OK — within limit (' + r.fillPct.toFixed(1) + '% <= ' + r.activeLimit + '%)';
+  lines.push(step++ + '. Assessment:\n   ' + verdict);
+
+  // Step 7 — Remaining capacity
+  const allowedArea = r.trayArea * r.activeLimit / 100;
+  const freeArea    = Math.max(0, allowedArea - r.totalCableArea);
+  lines.push(
+    step++ + '. Remaining capacity at limit:\n' +
+    '   A_free = A_tray x Limit% - A_cables\n' +
+    '   A_free = ' + r.trayArea.toFixed(1) + ' x ' + r.activeLimit + '% - ' + r.totalCableArea.toFixed(1) + '\n' +
+    '   A_free = ' + allowedArea.toFixed(1) + ' - ' + r.totalCableArea.toFixed(1) + ' = ' + freeArea.toFixed(1) + ' mm^2\n' +
+    '   Additional cables (OD ' + r.mostCommonOd.toFixed(1) + ' mm, most common): ' + r.additional
+  );
+
+  return lines;
+}
+
+/* ===================================================================== */
 /*  PDF EXPORT                                                             */
 /* ===================================================================== */
 function trayDownloadPdf() {
@@ -374,92 +461,83 @@ function trayDownloadPdf() {
 
   const { jsPDF } = window.jspdf;
   const r   = _trayLastResult;
-  const tLang = (typeof lang !== 'undefined' && T[lang]) ? lang : 'eng';
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   const PW = 210, PH = 297, M = 15, CW = PW - 2 * M;
-  const ACC = [126, 205, 233];   // #7ECDE9
-  const DIM = [100, 100, 100];
+  const ACC = [26, 82, 118];
 
-  function pdfSafe(s) {
-    return String(s)
-      .replace(/∅/g, 'OD').replace(/π/g, 'pi')
-      .replace(/²/g, '^2').replace(/×/g, 'x')
-      .replace(/≤/g, '<=').replace(/≥/g, '>=')
-      .replace(/[^\x00-\xFF]/g, '?');
+  const engineer = document.getElementById('tray-engineer')?.value.trim() || '';
+
+  function drawHeader(pageNum, totalPages) {
+    pdfMakeHeader(doc, { PW, M, title: 'Cable Tray / Conduit Fill Calculation' });
+    drawFooter(pageNum, totalPages);
   }
 
-  /* Header band */
-  doc.setFillColor(20, 30, 40);
-  doc.rect(0, 0, PW, 26, 'F');
-  doc.setFontSize(15); doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...ACC);
-  doc.text('Cable Tray / Conduit Fill Calculator', M, 12);
-  doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
-  doc.setTextColor(160, 180, 188);
-  doc.text(r.standardName, M, 20);
-  doc.text(new Date().toLocaleDateString(), PW - M, 20, { align: 'right' });
-
-  /* Footer */
-  function addFooter() {
-    doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.25);
-    doc.line(M, PH - M - 6, PW - M, PH - M - 6);
-    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(130, 130, 130);
-    doc.text('IEC 60364-5-52 / NEC 392 / NEC 358', M, PH - M - 2);
-    doc.text('Cable Tray Fill Calculator', PW - M, PH - M - 2, { align: 'right' });
+  function drawFooter(pageNum, totalPages) {
+    pdfMakeFooter(doc, { PW, PH, M, pageNum, totalPages, engineer, standard: 'IEC 60364-5-52 / NEC 392' });
   }
 
-  let y = 34;
+  let y = M + 22;  // content starts below header band
 
+  /* ---- Section header helper ---- */
   function secHdr(title) {
-    if (y > PH - M - 30) { doc.addPage(); addFooter(); y = M + 5; }
+    if (y > PH - M - 30) { doc.addPage(); drawHeader(_curPage(), 1); y = M + 22; }
     doc.setFontSize(10.5); doc.setFont('helvetica', 'bold');
     doc.setTextColor(...ACC);
-    doc.text(pdfSafe(title.toUpperCase()), M, y);
-    doc.setDrawColor(...ACC); doc.setLineWidth(0.25);
+    doc.text(pdfSafe(title), M, y);
+    doc.setDrawColor(...ACC); doc.setLineWidth(0.3);
     doc.line(M, y + 1.5, M + CW, y + 1.5);
-    y += 7; doc.setTextColor(30, 30, 30);
+    y += 7;
+    doc.setTextColor(30, 30, 30);
   }
 
+  /* ---- Key/value row helper ---- */
   function kv(label, value) {
-    if (y > PH - M - 10) { doc.addPage(); addFooter(); y = M + 5; }
+    if (y > PH - M - 10) { doc.addPage(); drawHeader(_curPage(), 1); y = M + 22; }
+    const RH = 6.5;
     doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...DIM); doc.text(pdfSafe(label) + ':', M, y);
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(...ACC);
-    doc.text(pdfSafe(String(value)), M + 70, y);
-    y += 5.5; doc.setTextColor(30, 30, 30);
+    doc.setTextColor(80, 80, 80);
+    doc.text(pdfSafe(label), M + 3, y + 4.5);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
+    doc.text(pdfSafe(String(value)), M + CW - 3, y + 4.5, { align: 'right' });
+    y += RH;
   }
 
-  /* Geometry */
-  secHdr('Geometry');
-  let geomTypeStr = r.geomMode === 'rect'
+  function _curPage() { return doc.getNumberOfPages(); }
+
+  /* ================================================================
+     PAGE 1  —  Summary  (Geometry + Standard + Cable table)
+     ================================================================ */
+  drawHeader(1, 1);  // total pages patched at end
+
+  /* ---- Geometry ---- */
+  secHdr('Summary — Geometry');
+  const geomTypeStr = r.geomMode === 'rect'
     ? r.trayType.charAt(0).toUpperCase() + r.trayType.slice(1) + ' tray'
     : (_trayConduitType === 'round' ? 'Round conduit' : 'Oval duct');
   kv('Type', geomTypeStr);
   if (r.geomMode === 'rect') {
     kv('Dimensions', r.geom.w + ' mm x ' + r.geom.h + ' mm');
   } else if (r.geom.d) {
-    kv('Inner diameter', 'OD ' + r.geom.d + ' mm');
+    kv('Inner diameter', r.geom.d + ' mm');
   } else {
-    kv('Dimensions', r.geom.ow + ' mm x ' + r.geom.oh + ' mm');
+    kv('Dimensions (oval)', r.geom.ow + ' mm x ' + r.geom.oh + ' mm');
   }
   kv('Usable area', r.trayArea.toFixed(0) + ' mm^2');
-  y += 2;
+  y += 3;
 
-  /* Standard */
-  secHdr('Standard & Rule');
+  /* ---- Standard ---- */
+  secHdr('Summary — Fill Standard');
   kv('Standard',     r.standardName);
   kv('Applied rule', r.ruleDesc);
   kv('Fill limit',   r.activeLimit + ' %');
-  y += 2;
+  y += 3;
 
-  /* Cable table */
-  secHdr('Cables');
-  const colW = [18, 26, 14, 26, 32, 24];
+  /* ---- Cable table ---- */
+  secHdr('Summary — Cables');
+  const colW = [14, 30, 16, 30, 36, 24];
   const hdrs = ['#', 'OD (mm)', 'Count', 'Type', 'Area (mm^2)', 'Input'];
 
-  /* Table header */
   doc.setFillColor(...ACC);
   doc.rect(M, y, CW, 6.5, 'F');
   doc.setFontSize(8); doc.setFont('helvetica', 'bold');
@@ -473,36 +551,43 @@ function trayDownloadPdf() {
   y += 6.5;
 
   _trayRows.forEach((row, ri) => {
-    if (y > PH - M - 12) { doc.addPage(); addFooter(); y = M + 5; }
+    if (y > PH - M - 12) { doc.addPage(); drawHeader(_curPage(), 1); y = M + 22; }
     if (ri % 2 === 1) { doc.setFillColor(245, 248, 252); doc.rect(M, y, CW, 6.5, 'F'); }
     doc.setDrawColor(210, 215, 220); doc.setLineWidth(0.1);
     doc.rect(M, y, CW, 6.5);
     const area  = Math.PI * Math.pow(row.od / 2, 2) * row.count;
-    const cells = [ri + 1, 'OD ' + row.od.toFixed(1), row.count,
-                   row.type.charAt(0).toUpperCase() + row.type.slice(1),
-                   area.toFixed(1), row.mode === 'xsec' ? '[est. OD]' : 'measured'];
+    const cells = [
+      ri + 1,
+      'OD ' + row.od.toFixed(1),
+      row.count,
+      row.type.charAt(0).toUpperCase() + row.type.slice(1),
+      area.toFixed(1),
+      row.mode === 'xsec' ? '[est. OD]' : 'measured',
+    ];
     cx = M;
     cells.forEach((cell, i) => {
       doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-      doc.setTextColor(i === 5 && row.mode === 'xsec' ? 180 : 40,
-                       i === 5 && row.mode === 'xsec' ? 130 : 40, 40);
+      doc.setTextColor(i === 5 && row.mode === 'xsec' ? 160 : 40, 40, 40);
       doc.text(pdfSafe(String(cell)), i === 0 ? cx + 2 : cx + colW[i] - 2, y + 4.5,
         i === 0 ? { maxWidth: colW[i] - 3 } : { align: 'right', maxWidth: colW[i] - 3 });
       cx += colW[i];
     });
     y += 6.5;
   });
-  y += 4;
+  y += 5;
 
-  /* Results */
+  /* ================================================================
+     Results section
+     ================================================================ */
+  if (y > PH - M - 80) { doc.addPage(); drawHeader(_curPage(), 1); y = M + 22; }
   secHdr('Results');
   kv('Total cable area',   r.totalCableArea.toFixed(0) + ' mm^2');
   kv('Tray usable area',   r.trayArea.toFixed(0) + ' mm^2');
   kv('Fill percentage',    r.fillPct.toFixed(1) + ' %');
   kv('Fill limit',         r.activeLimit + ' %');
   kv('Remaining capacity', r.remaining.toFixed(0) + ' mm^2');
-  kv('Additional cables',  r.additional + ' x OD ' + r.mostCommonOd.toFixed(1) + ' mm');
-  y += 2;
+  kv('Additional cables (most common OD)', r.additional + ' x OD ' + r.mostCommonOd.toFixed(1) + ' mm');
+  y += 3;
 
   /* Status box */
   const statusText = r.fillPct > r.activeLimit ? 'EXCEEDED'
@@ -511,7 +596,7 @@ function trayDownloadPdf() {
              : r.statusClass === 'yellow' ? [180, 130, 0] : [200, 40, 40];
   const sBg  = r.statusClass === 'green' ? [220, 255, 235]
              : r.statusClass === 'yellow' ? [255, 248, 220] : [255, 225, 220];
-  if (y > PH - M - 20) { doc.addPage(); addFooter(); y = M + 5; }
+  if (y > PH - M - 22) { doc.addPage(); drawHeader(_curPage(), 1); y = M + 22; }
   doc.setFillColor(...sBg);
   doc.setDrawColor(...sCol);
   doc.setLineWidth(0.6);
@@ -523,20 +608,58 @@ function trayDownloadPdf() {
 
   /* Warnings */
   if (r.stackWarn || r.mixed) {
-    secHdr('Warnings');
+    if (y > PH - M - 20) { doc.addPage(); drawHeader(_curPage(), 1); y = M + 22; }
     doc.setFontSize(9); doc.setFont('helvetica', 'normal');
     doc.setTextColor(180, 100, 0);
     if (r.stackWarn) {
-      doc.text('! Estimated stack height exceeds tray height — consider wider or taller tray', M, y);
-      y += 5.5;
+      doc.text(pdfSafe('Warning: Estimated stack height exceeds tray height — consider wider or taller tray'), M, y, { maxWidth: CW });
+      y += 6;
     }
     if (r.mixed) {
-      doc.text('! Mixed cable types (power + other) detected — stricter 40% fill rule applied', M, y);
-      y += 5.5;
+      doc.text(pdfSafe('Warning: Mixed cable types (power + other) detected — stricter 40% fill rule applied'), M, y, { maxWidth: CW });
+      y += 6;
     }
     y += 2;
   }
 
-  addFooter();
+  /* ================================================================
+     Calculation Procedure section
+     ================================================================ */
+  if (y > PH - M - 50) { doc.addPage(); drawHeader(_curPage(), 1); y = M + 22; }
+  secHdr('Calculation Procedure');
+
+  const steps = _trayBuildSteps(r);
+  steps.forEach(block => {
+    const lines = block.split('\n');
+    const blockH = lines.length * 4.5 + 5;
+    if (y + blockH > PH - M - 10) {
+      doc.addPage(); drawHeader(_curPage(), 1); y = M + 22;
+    }
+    lines.forEach((line, li) => {
+      if (!line.trim()) return;
+      const indented = line.startsWith('   ');
+      const isBold   = li === 0;
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+      doc.setTextColor(isBold ? ACC[0] : 40, isBold ? ACC[1] : 40, isBold ? ACC[2] : 40);
+      doc.text(pdfSafe(line.trimStart()), M + (indented ? 6 : 0), y, { maxWidth: CW - (indented ? 6 : 0) });
+      y += 4.5;
+    });
+    doc.setDrawColor(210, 210, 210); doc.setLineWidth(0.2);
+    doc.line(M, y + 1, PW - M, y + 1);
+    y += 5;
+  });
+
+  /* ================================================================
+     Patch all footers with correct total page count
+     ================================================================ */
+  const realTotal = doc.getNumberOfPages();
+  for (let p = 1; p <= realTotal; p++) {
+    doc.setPage(p);
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, PH - M - 8, PW, 25, 'F');
+    drawFooter(p, realTotal);
+  }
+
   doc.save('cable-tray-fill.pdf');
 }
