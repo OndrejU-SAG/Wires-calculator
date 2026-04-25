@@ -12,13 +12,21 @@ const TRAY_XSEC_OD = {
 
 const TRAY_XSEC_LIST = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120];
 
-/* Fill limits per IEC 60364-5-52 / NEC 392-80 */
+/*
+ * Fill limits by standard and cable scenario:
+ *   IEC values  — IEC 60364-5-52:2009 Annex B (conduit); conservative engineering practice for trays.
+ *                 Signal/power/mixed 40 %: no explicit separate tray limit in IEC — 40 % is accepted
+ *                 conservative practice (50 % has no IEC basis for these scenarios).
+ *   NEC conduit — NEC 358 / Chapter 9 Table 1 (40 % three or more conductors).
+ *   NEC tray    — NEC 392.22(A): 50 % of usable cross-sectional area for ladder/ventilated trays,
+ *                 applied uniformly to power, signal, and mixed cable scenarios.
+ */
 const TRAY_LIMITS = {
   single: { iec: 53, nec: 53 },
   two:    { iec: 31, nec: 31 },
-  power:  { iec: 40, nec: 40 },
-  signal: { iec: 50, nec: 50 },
-  mixed:  { iec: 40, nec: 40 }
+  power:  { iec: 40, nec: 50 },
+  signal: { iec: 40, nec: 50 },
+  mixed:  { iec: 40, nec: 50 }
 };
 
 /* Rule descriptions per language */
@@ -35,6 +43,7 @@ let _trayGeomMode    = 'rect';
 let _trayConduitType = 'round';
 let _trayTrayType    = 'ladder';
 let _trayStandard    = 'iec';
+let _trayCustomLimit = 40;
 let _trayRows        = [];
 let _trayNextId      = 0;
 let _trayLastResult  = null;
@@ -75,6 +84,13 @@ function traySetStandard(el, std) {
   _trayStandard = std;
   el.closest('.seg-group').querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
+  const customRow = document.getElementById('tray-custom-limit-row');
+  if (customRow) customRow.style.display = std === 'custom' ? 'flex' : 'none';
+}
+
+function traySetCustomLimit(val) {
+  const v = parseFloat(val);
+  if (!isNaN(v) && v > 0 && v <= 100) _trayCustomLimit = v;
 }
 
 /* ===================================================================== */
@@ -234,7 +250,7 @@ function _trayGetLimits(totalCount, types) {
   let ruleKey;
 
   if      (totalCount === 1) ruleKey = 'single';
-  else if (totalCount === 2) ruleKey = 'two';
+  else if (totalCount === 2) ruleKey = 'two';   // IEC Annex B / NEC Ch.9 Table 1: count-based, takes priority over mixed
   else if (mixed)            ruleKey = 'mixed';
   else if (hasPower)         ruleKey = 'power';
   else                       ruleKey = 'signal';
@@ -290,21 +306,27 @@ function trayCalculate() {
 
   /* Fill limit */
   const { ruleKey, mixed, limitIec, limitNec } = _trayGetLimits(totalCount, types);
-  const activeLimit  = _trayStandard === 'iec' ? limitIec : limitNec;
-  const standardName = _trayStandard === 'iec' ? 'IEC 60364-5-52' : 'NEC 392 / 358';
+  const activeLimit  = _trayStandard === 'iec' ? limitIec
+                     : _trayStandard === 'nec' ? limitNec
+                     : _trayCustomLimit;
+  const standardName = _trayStandard === 'iec' ? 'IEC 60364-5-52'
+                     : _trayStandard === 'nec' ? 'NEC 392 / 358'
+                     : 'Custom';
+  /* NEC 392.22(B): solid-bottom trays use a different fill rule (sum of cable diameters
+     vs tray width), not the area-percentage method — flag for manual verification */
+  const necSolidNote = (_trayStandard === 'nec' && _trayTrayType === 'solid');
   const ruleDesc     = (TRAY_RULE_DESC[ruleKey] || {})[tLang]
                     || (TRAY_RULE_DESC[ruleKey] || {}).eng
                     || ruleKey;
 
-  /* Fill % and remaining */
+  /* Fill % and remaining capacity until fill limit is reached */
   const fillPct   = (totalCableArea / geom.area) * 100;
-  const remaining = Math.max(0, geom.area - totalCableArea);
 
   /* Most common OD by count */
   const mostCommonOd = parseFloat(Object.entries(odCounts).sort((a, b) => b[1] - a[1])[0][0]);
   const commonSingle = Math.PI * Math.pow(mostCommonOd / 2, 2);
-  const roomAtLimit  = Math.max(0, (geom.area * activeLimit / 100) - totalCableArea);
-  const additional   = Math.floor(roomAtLimit / commonSingle);
+  const remaining    = Math.max(0, (geom.area * activeLimit / 100) - totalCableArea);
+  const additional   = Math.floor(remaining / commonSingle);
 
   /* Status */
   let statusClass, statusKey;
@@ -314,8 +336,12 @@ function trayCalculate() {
 
   /* Stacking check (rectangular only) */
   let stackWarn = false;
-  if (_trayGeomMode === 'rect' && geom.w > 0 && geom.h > 0) {
-    stackWarn = (totalCableArea / geom.w) > geom.h;
+  let worstCaseStackHeight = 0;
+  if (_trayGeomMode === 'rect' && geom.h > 0 && geom.w > 0) {
+    const cablesPerRow   = Math.max(1, Math.floor(geom.w / mostCommonOd));
+    const rowsNeeded     = Math.ceil(totalCount / cablesPerRow);
+    worstCaseStackHeight = rowsNeeded * mostCommonOd;
+    stackWarn            = worstCaseStackHeight > geom.h;
   }
 
   /* ---- Render results ---- */
@@ -345,7 +371,10 @@ function trayCalculate() {
   /* Warnings */
   const stackEl = document.getElementById('tray-stack-warn');
   stackEl.style.display = (stackWarn && _trayGeomMode === 'rect') ? 'flex' : 'none';
-  if (stackWarn) stackEl.textContent = t.tray_warnStack || '⚠ Estimated stack height exceeds tray height';
+  if (stackWarn) {
+    const baseMsg = t.tray_warnStack || '⚠ Estimated stack height exceeds tray height';
+    stackEl.textContent = baseMsg + ' (est. stack height: ' + worstCaseStackHeight.toFixed(1) + ' mm (tray height: ' + geom.h + ' mm))';
+  }
 
   const mixedEl = document.getElementById('tray-mixed-warn');
   mixedEl.style.display = mixed ? 'flex' : 'none';
@@ -353,14 +382,16 @@ function trayCalculate() {
 
   /* Rule info line */
   document.getElementById('tray-rule-info').textContent =
-    activeLimit + '% — ' + standardName + ' — ' + ruleDesc;
+    activeLimit + '% — ' + standardName + ' — ' + ruleDesc +
+    (necSolidNote ? ' — ⚠ consult NEC 392.22(B) — area method not applicable' : '');
 
   /* Store for PDF */
   _trayLastResult = {
     fillPct, totalCableArea, trayArea: geom.area, remaining, activeLimit,
     ruleKey, ruleDesc, standardName, statusClass, statusKey,
     additional, mostCommonOd, totalCount, types: [...types],
-    stackWarn, mixed, geomMode: _trayGeomMode, trayType: _trayTrayType, geom
+    stackWarn, worstCaseStackHeight, mixed, necSolidNote,
+    geomMode: _trayGeomMode, trayType: _trayTrayType, conduitType: _trayConduitType, geom
   };
 }
 
@@ -422,11 +453,13 @@ function _trayBuildSteps(r) {
 
   // Step 5 — Fill limit determination
   const typesList = r.types.join(', ');
+  const necSolidLine = r.necSolidNote
+    ? '\n   Note: NEC 392.22(B) solid-bottom tray — area-percentage method not applicable; consult standard' : '';
   lines.push(
     step++ + '. Fill limit (standard: ' + r.standardName + '):\n' +
     '   Cable types present: ' + typesList + '\n' +
     '   Applied rule: ' + r.ruleDesc + '\n' +
-    '   Fill limit = ' + r.activeLimit + '%'
+    '   Fill limit = ' + r.activeLimit + '%' + necSolidLine
   );
 
   // Step 6 — Assessment
@@ -439,12 +472,11 @@ function _trayBuildSteps(r) {
 
   // Step 7 — Remaining capacity
   const allowedArea = r.trayArea * r.activeLimit / 100;
-  const freeArea    = Math.max(0, allowedArea - r.totalCableArea);
   lines.push(
     step++ + '. Remaining capacity at limit:\n' +
     '   A_free = A_tray x Limit% - A_cables\n' +
     '   A_free = ' + r.trayArea.toFixed(1) + ' x ' + r.activeLimit + '% - ' + r.totalCableArea.toFixed(1) + '\n' +
-    '   A_free = ' + allowedArea.toFixed(1) + ' - ' + r.totalCableArea.toFixed(1) + ' = ' + freeArea.toFixed(1) + ' mm^2\n' +
+    '   A_free = ' + allowedArea.toFixed(1) + ' - ' + r.totalCableArea.toFixed(1) + ' = ' + r.remaining.toFixed(1) + ' mm^2\n' +
     '   Additional cables (OD ' + r.mostCommonOd.toFixed(1) + ' mm, most common): ' + r.additional
   );
 
@@ -514,7 +546,7 @@ function trayDownloadPdf() {
   secHdr('Summary — Geometry');
   const geomTypeStr = r.geomMode === 'rect'
     ? r.trayType.charAt(0).toUpperCase() + r.trayType.slice(1) + ' tray'
-    : (_trayConduitType === 'round' ? 'Round conduit' : 'Oval duct');
+    : (r.conduitType === 'round' ? 'Round conduit' : 'Oval duct');
   kv('Type', geomTypeStr);
   if (r.geomMode === 'rect') {
     kv('Dimensions', r.geom.w + ' mm x ' + r.geom.h + ' mm');
@@ -567,7 +599,11 @@ function trayDownloadPdf() {
     cx = M;
     cells.forEach((cell, i) => {
       doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-      doc.setTextColor(i === 5 && row.mode === 'xsec' ? 160 : 40, 40, 40);
+      if (i === 5 && row.mode === 'xsec') {
+        doc.setTextColor(140, 100, 0); // amber — estimated OD
+      } else {
+        doc.setTextColor(40, 40, 40);
+      }
       doc.text(pdfSafe(String(cell)), i === 0 ? cx + 2 : cx + colW[i] - 2, y + 4.5,
         i === 0 ? { maxWidth: colW[i] - 3 } : { align: 'right', maxWidth: colW[i] - 3 });
       cx += colW[i];

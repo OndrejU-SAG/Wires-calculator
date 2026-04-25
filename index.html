@@ -1155,6 +1155,11 @@
     <div class="seg-group" style="margin-bottom:0">
       <button class="seg-btn active" onclick="traySetStandard(this,'iec')" data-t="tray_stdIec">IEC 60364-5-52</button>
       <button class="seg-btn" onclick="traySetStandard(this,'nec')" data-t="tray_stdNec">NEC 392 / 358</button>
+      <button class="seg-btn" onclick="traySetStandard(this,'custom')" data-t="tray_stdCustom">Custom</button>
+    </div>
+    <div id="tray-custom-limit-row" style="display:none;align-items:center;gap:8px;margin-top:8px">
+      <label style="font-size:13px" data-t="tray_customLimitLbl">Fill limit:</label>
+      <div class="fld-inner" style="width:90px"><input type="number" id="tray-custom-limit" value="40" min="1" max="100" step="1" oninput="traySetCustomLimit(this.value)" style="width:54px"><span class="fld-unit">%</span></div>
     </div>
     <div class="fld-hint" style="margin-top:8px;white-space:normal;line-height:1.5">
       1 cable: 53% · 2 cables: 31% · 3+ power: 40% · 3+ control/signal: 50% · mixed: 40%
