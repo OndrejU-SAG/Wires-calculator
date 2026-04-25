@@ -177,10 +177,20 @@ initDcCalculator();
 initMotorCalc();
 initTray();
 document.getElementById('sb-mode-mm2').classList.add('active');
-// Restore saved theme
-const _savedTheme = localStorage.getItem('theme') || 'dark';
+// Restore saved theme — user preference wins, otherwise follow OS
+const _storedTheme = localStorage.getItem('theme');
+const _osDark = window.matchMedia('(prefers-color-scheme: dark)');
+const _savedTheme = _storedTheme || (_osDark.matches ? 'dark' : 'light');
 document.documentElement.setAttribute('data-theme', _savedTheme);
 document.getElementById('themeToggle').checked = _savedTheme === 'dark';
+// Keep in sync with OS changes as long as the user hasn't set a manual preference
+_osDark.addEventListener('change', e => {
+  if (!localStorage.getItem('theme')) {
+    const t = e.matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t);
+    document.getElementById('themeToggle').checked = e.matches;
+  }
+});
 // Restore saved color
 const _savedColor = localStorage.getItem('color') || 'teal';
 setColor(_savedColor);
