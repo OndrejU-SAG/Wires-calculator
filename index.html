@@ -16,6 +16,7 @@
     <div class="app-bar-sub" data-t="appSub">Měď · IEC 60228 · Úbytek napětí + Zatížitelnost</div>
   </div>
   <div class="bar-end">
+    <button id="resetDefBtn" class="reset-btn" onclick="resetToDefaults()" title="Reset to defaults">↺</button>
     <div class="mu-select-wrapper">
       <select id="langDropdown" onchange="setLang(this.value)" class="mu-select">
         <option value="eng" selected>EN</option>
@@ -58,7 +59,7 @@
       <div class="fld"><label data-t="srcVoltage">Napájecí napětí</label>
         <div class="fld-inner"><input type="number" id="voltage" placeholder="např. 230" min="0" oninput="liveWarn()"><span class="fld-unit">V</span></div></div>
       <div class="fld"><label data-t="current">Proud (špičkový)</label>
-        <div class="fld-inner"><input type="number" id="current" placeholder="např. 25" min="0" oninput="liveWarn()"><span class="fld-unit">A</span></div></div>
+        <div class="fld-inner"><input type="number" id="current" value="16" placeholder="např. 25" min="0" oninput="liveWarn()"><span class="fld-unit">A</span></div></div>
     </div>
     <div class="row c3">
       <div class="fld"><label data-t="ambTemp">Teplota okolí</label>
@@ -83,7 +84,7 @@
     <div class="len-row">
       <div class="fld"><label data-t="wireLen">Délka vodiče</label>
         <div class="len-inner">
-          <input type="number" id="length" placeholder="Délka…" min="0">
+          <input type="number" id="length" value="10" placeholder="Délka…" min="0">
           <select id="lenUnit"><option value="m">m</option><option value="cm">cm</option><option value="mm">mm</option></select>
           <select id="distType">
             <option value="oneway" data-t="oneWay">Jednosměrně</option>
@@ -187,7 +188,7 @@
       <div class="conv-dir-lbl" id="cToLbl">AWG</div>
     </div>
     <div id="cInMm2"><div class="fld"><label data-t="crossSection">Průřez vodiče</label>
-      <div class="fld-inner"><input type="number" id="cMm2" placeholder="např. 2.5" min="0" step="any"><span class="fld-unit">mm²</span></div>
+      <div class="fld-inner"><input type="number" id="cMm2" value="2.5" placeholder="např. 2.5" min="0" step="any"><span class="fld-unit">mm²</span></div>
     </div></div>
     <div id="cInAwg" style="display:none"><div class="row c2">
       <div class="fld"><label data-t="stdAwgLbl">Standardní AWG</label><div class="fld-inner">
@@ -946,7 +947,7 @@
     <div class="row c2">
       <div class="fld">
         <label data-t="mscPn">Jmenovitý výkon Pn</label>
-        <div class="fld-inner"><input type="number" id="msc-pn" placeholder="např. 7.5" min="0" step="any"><span class="fld-unit">kW</span></div>
+        <div class="fld-inner"><input type="number" id="msc-pn" value="7.5" placeholder="např. 7.5" min="0" step="any"><span class="fld-unit">kW</span></div>
       </div>
       <div class="fld">
         <label data-t="mscUn">Napájecí napětí Un</label>
@@ -983,7 +984,7 @@
       </div>
       <div class="fld">
         <label data-t="mscL">Délka L (jednosměrně)</label>
-        <div class="fld-inner"><input type="number" id="msc-len" placeholder="např. 50" min="0" step="any"><span class="fld-unit">m</span></div>
+        <div class="fld-inner"><input type="number" id="msc-len" value="20" placeholder="např. 50" min="0" step="any"><span class="fld-unit">m</span></div>
       </div>
       <div class="fld">
         <label data-t="mscMaterial">Materiál vodiče</label>

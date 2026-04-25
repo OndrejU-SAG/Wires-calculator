@@ -272,6 +272,7 @@ const T = {
     tray_pdfBtn: '⬇ PDF herunterladen',
     tray_errNoTray: 'Bitte Wannenabmessungen eingeben.',
     tray_errNoCables: 'Bitte mindestens ein Kabel hinzufügen.',
+    resetBtn: 'Standardwerte zurücksetzen', resetDone: 'Standardwerte wiederhergestellt',
   },
   cze: {
     appTitle: 'Kalkulátor průřezu vodiče', appSub: 'Měď · IEC 60228 · Úbytek napětí + Zatížitelnost',
@@ -546,6 +547,7 @@ const T = {
     tray_pdfBtn: '⬇ Stáhnout PDF',
     tray_errNoTray: 'Zadejte prosím rozměry žlabu.',
     tray_errNoCables: 'Přidejte prosím alespoň jeden kabel.',
+    resetBtn: 'Obnovit výchozí hodnoty', resetDone: 'Výchozí hodnoty obnoveny',
   },
   eng: {
     appTitle: 'Wire Size Calculator', appSub: 'Copper · IEC 60228 · Voltage Drop + Ampacity',
@@ -820,6 +822,7 @@ const T = {
     tray_pdfBtn: '⬇ Download PDF',
     tray_errNoTray: 'Please enter valid tray dimensions.',
     tray_errNoCables: 'Please add at least one cable row.',
+    resetBtn: 'Reset to defaults', resetDone: 'Defaults restored',
   }
 };
 
