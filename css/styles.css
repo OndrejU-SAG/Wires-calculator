@@ -167,6 +167,11 @@ input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;bac
 .ref-tbl-card{background:var(--surf-1);border:1px solid var(--out-var);border-radius:var(--r-lg);overflow:hidden}
 
 
+/* Tooltip icon */
+.tt{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--surf-var);border:1px solid var(--out);color:var(--on-surf-var);font-size:9px;font-weight:700;cursor:help;position:relative;margin-left:5px;vertical-align:middle;font-style:normal;flex-shrink:0;user-select:none;font-family:'Roboto',sans-serif;letter-spacing:0;text-transform:none;transition:background .15s,border-color .15s;line-height:1}
+.tt:hover,.tt:focus{background:var(--pri-con);border-color:var(--pri);color:var(--on-pri-con);outline:none}
+.tt::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--surf-3);color:var(--on-surf);border:1px solid var(--out);border-radius:var(--r-md);padding:8px 11px;font-size:11px;font-weight:400;font-family:'Roboto',sans-serif;letter-spacing:normal;text-transform:none;white-space:normal;line-height:1.5;width:230px;box-shadow:0 4px 16px rgba(0,0,0,.4);z-index:60;pointer-events:none;opacity:0;transition:opacity .15s}
+.tt:hover::after,.tt:focus::after{opacity:1}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--surf-var);color:var(--on-surf);padding:9px 18px;border-radius:var(--r-full);font-size:12.5px;z-index:100;box-shadow:0 4px 16px rgba(0,0,0,.5);pointer-events:none;opacity:0;transition:opacity .3s}
 option{background:#1C262A;color:var(--on-surf)}
 ::-webkit-scrollbar{width:5px;height:5px}

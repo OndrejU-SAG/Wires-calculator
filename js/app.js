@@ -8,6 +8,9 @@ function setLang(l) {
   document.querySelectorAll('[data-tp]').forEach(el => {
     const k = el.dataset.tp; if (T[l][k] !== undefined) el.placeholder = T[l][k];
   });
+  document.querySelectorAll('[data-tt]').forEach(el => {
+    const k = el.dataset.tt; if (T[l][k] !== undefined) el.dataset.tip = T[l][k];
+  });
   document.getElementById('length').placeholder = T[l].placeLen;
   document.getElementById('voltage').placeholder = T[l].placeV;
   document.getElementById('current').placeholder = T[l].placeA;
