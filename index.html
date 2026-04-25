@@ -78,7 +78,7 @@
           <div class="fld-inner"><input type="number" id="tempCustom" value="70" min="20" max="500" oninput="liveWarn()"><span class="fld-unit">°C</span></div>
         </div>
       </div>
-      <div class="fld"><label data-t="vdPct">Povolený úbytek napětí <span class="tt" data-tt="ttVdPct" tabindex="0">ⓘ</span></label>
+      <div class="fld"><label><span data-t="vdPct">Povolený úbytek napětí</span> <span class="tt" data-tt="ttVdPct" tabindex="0">ⓘ</span></label>
         <div class="fld-inner"><input type="number" id="vdropPct" value="3" min="0.1" max="100" step="0.1" oninput="liveWarn()"><span class="fld-unit">%</span></div></div>
     </div>
     <div class="len-row">
@@ -92,7 +92,7 @@
           </select>
         </div>
       </div>
-      <div class="fld"><label data-t="heatDiss">Odvod tepla <span class="tt" data-tt="ttHeatDiss" tabindex="0">ⓘ</span></label>
+      <div class="fld"><label><span data-t="heatDiss">Odvod tepla</span> <span class="tt" data-tt="ttHeatDiss" tabindex="0">ⓘ</span></label>
         <div class="fld-inner"><select id="hMethod" onchange="onHChange()" style="padding-left:9px;font-size:12.5px">
           <option value="free" data-t="hFree">Volný vzduch</option>
           <option value="grouped" data-t="hGrouped">Svazek</option>
@@ -487,7 +487,7 @@
           <div class="fld-inner"><input type="number" id="sc-tr-sn" value="630" min="1" oninput="scUpdateFromTransformer()"><span class="fld-unit">kVA</span></div>
         </div>
         <div class="fld">
-          <label data-t="scTrUk">Uk <span class="tt" data-tt="ttScTrUk" tabindex="0">ⓘ</span></label>
+          <label><span data-t="scTrUk">Uk</span> <span class="tt" data-tt="ttScTrUk" tabindex="0">ⓘ</span></label>
           <div class="fld-inner"><input type="number" id="sc-tr-uk" value="4" min="0.1" max="20" step="0.1" oninput="scUpdateFromTransformer()"><span class="fld-unit">%</span></div>
         </div>
         <div class="fld">
@@ -508,7 +508,7 @@
       <span data-t="scZsLabel">Zs =</span> <span id="sc-zs-val">—</span>
     </div>
     <div class="fld" style="margin-top:10px">
-      <label data-t="scXR">X/R poměr zdroje <span class="tt" data-tt="ttScXR" tabindex="0">ⓘ</span></label>
+      <label><span data-t="scXR">X/R poměr zdroje</span> <span class="tt" data-tt="ttScXR" tabindex="0">ⓘ</span></label>
       <div class="fld-inner"><input type="number" id="sc-xr" value="1.0" min="0" max="20" step="0.1" oninput="scSetSourceXR()"><span class="fld-unit">—</span></div>
       <div class="fld-hint" data-t="scXRHint">Typicky 0.5–2 pro LV transformátor; ovlivňuje Rs/Xs složky Zs</div>
     </div>
@@ -532,7 +532,7 @@
       </div>
     </div>
     <div class="fld" style="margin-top:8px">
-      <label data-t="scXpm">Reaktance kabelu x' <span class="tt" data-tt="ttScXpm" tabindex="0">ⓘ</span></label>
+      <label><span data-t="scXpm">Reaktance kabelu x'</span> <span class="tt" data-tt="ttScXpm" tabindex="0">ⓘ</span></label>
       <div class="fld-inner"><input type="number" id="sc-xpm" value="0.08" min="0" max="1" step="0.01" oninput="scSetCableXpm()"><span class="fld-unit">mΩ/m</span></div>
       <div class="fld-hint" data-t="scXpmHint">0.08 mΩ/m jednožilový · 0.07 mΩ/m vícežilový (IEC 60909 typical)</div>
     </div>
@@ -957,22 +957,22 @@
 
     <div class="row c3">
       <div class="fld">
-        <label data-t="mscCosN">cos φn <span class="tt" data-tt="ttCosN" tabindex="0">ⓘ</span></label>
+        <label><span data-t="mscCosN">cos φn</span> <span class="tt" data-tt="ttCosN" tabindex="0">ⓘ</span></label>
         <div class="fld-inner"><input type="number" id="msc-cosn" value="0.85" min="0.01" max="1" step="0.01"></div>
       </div>
       <div class="fld">
-        <label data-t="mscEta">η (účinnost) <span class="tt" data-tt="ttEta" tabindex="0">ⓘ</span></label>
+        <label><span data-t="mscEta">η (účinnost)</span> <span class="tt" data-tt="ttEta" tabindex="0">ⓘ</span></label>
         <div class="fld-inner"><input type="number" id="msc-eta" value="0.92" min="0.01" max="1" step="0.01"></div>
       </div>
       <div class="fld">
-        <label data-t="mscKstart">kstart <span class="tt" data-tt="ttKstart" tabindex="0">ⓘ</span></label>
+        <label><span data-t="mscKstart">kstart</span> <span class="tt" data-tt="ttKstart" tabindex="0">ⓘ</span></label>
         <div class="fld-inner"><input type="number" id="msc-kstart" value="6" min="0.5" max="20" step="0.1"></div>
       </div>
     </div>
     <div class="fld-hint" id="msc-kstart-hint" style="margin-bottom:12px">DOL: kstart 5–8</div>
 
     <div class="fld" style="margin-bottom:12px">
-      <label data-t="mscCosStart">Startovací cos φstart <span class="tt" data-tt="ttCosStart" tabindex="0">ⓘ</span></label>
+      <label><span data-t="mscCosStart">Startovací cos φstart</span> <span class="tt" data-tt="ttCosStart" tabindex="0">ⓘ</span></label>
       <div class="fld-inner"><input type="number" id="msc-cosstart" value="0.35" min="0.01" max="1" step="0.01"><span class="fld-unit">—</span></div>
       <div class="fld-hint" data-t="mscCosStartHint">Typicky 0,35–0,5 při rozběhu motoru</div>
     </div>
