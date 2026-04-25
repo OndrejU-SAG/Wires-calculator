@@ -28,7 +28,18 @@ const SC_CURVES = {
   Z: { min: 2,  max: 3,  label: 'Z (2–3 × In)'   },
 };
 
-const SC_FUSE_FACTOR = 1.6; // gG conventional fusing current (IEC 60269-2)
+const SC_FUSE_FACTOR = 1.6; // I₂ conventional fusing current (IEC 60269-2) — overload info only
+
+// gG fuse disconnection-current multipliers k_a = I_a / In (IEC 60269-2 Annex B / IEC 60364-4-43 Table A)
+const SC_FUSE_KA = {
+  '5':   { lo: 4.5,  hi: 6.0  }, // ≤5 s — distribution circuits, IEC 60364-4-41 §411.3.2
+  '0.4': { lo: 9.0,  hi: 12.0 }, // ≤0.4 s — final circuits ≤32 A
+  '0.1': { lo: 13.0, hi: 18.0 }, // very fast SLD/socket / sensitive loads
+};
+
+function getFuseKa(discTime) {
+  return SC_FUSE_KA[discTime] || SC_FUSE_KA['5'];
+}
 
 let scSourceMode  = 'known'; // 'known' | 'transformer'
 let scMaterial    = 'cu';
@@ -130,7 +141,11 @@ function scUpdateTripHint() {
   const hint  = document.getElementById('sc-trip-hint');
   if (!hint) return;
   if (type === 'fuse') {
-    hint.textContent = 'gG: I2 ≈ 1.6 × In = ' + (SC_FUSE_FACTOR * In).toFixed(0) + ' A (IEC 60269-2)';
+    const t  = document.getElementById('sc-disc-time')?.value || '5';
+    const ka = getFuseKa(t);
+    hint.textContent =
+      'I_a: ' + (ka.lo * In).toFixed(0) + '…' + (ka.hi * In).toFixed(0) +
+      ' A  |  I₂ (overload) = 1.6 × In = ' + (SC_FUSE_FACTOR * In).toFixed(0) + ' A (IEC 60269-2)';
     return;
   }
   const curve = document.getElementById('sc-dev-curve')?.value;
@@ -211,8 +226,10 @@ function scSetSourceMode(btn, mode) {
 
 function scOnDevTypeChange() {
   const type = document.getElementById('sc-dev-type')?.value;
-  const curveFld = document.getElementById('sc-curve-fld');
-  if (curveFld) curveFld.style.display = type === 'fuse' ? 'none' : 'flex';
+  const curveInner = document.getElementById('sc-curve-inner');
+  const discInner  = document.getElementById('sc-disc-time-inner');
+  if (curveInner) curveInner.style.display = type === 'fuse' ? 'none' : '';
+  if (discInner)  discInner.style.display  = type === 'fuse' ? '' : 'none';
   scUpdateTripHint();
 }
 
@@ -270,9 +287,9 @@ function scOnSelCheckChange() {
 
 function scOnUpTypeChange() {
   const t = document.getElementById('sc-up-type').value;
-  document.getElementById('sc-sel-mcb-row').style.display  = t === 'mcb'  ? '' : 'none';
-  document.getElementById('sc-sel-mccb-rows').style.display = t === 'mccb' ? '' : 'none';
-  document.getElementById('sc-sel-fuse-hint').style.display = t === 'fuse' ? '' : 'none';
+  document.getElementById('sc-sel-mcb-row').style.display    = t === 'mcb'  ? '' : 'none';
+  document.getElementById('sc-sel-mccb-rows').style.display  = t === 'mccb' ? '' : 'none';
+  document.getElementById('sc-sel-fuse-hint').style.display  = t === 'fuse' ? '' : 'none';
 }
 
 function drawSelectivityAscii(ds, usTripModes, Ik_min_A, Ik_max_A, dsTripLo, dsTripHi, state, I_sel) {
@@ -430,10 +447,12 @@ function scAnalyzeSelectivity() {
     usTripModes.push({ name: 'Magnetic ' + curve + ' ' + usIn + 'A', lo: usTripLo, hi: usTripHi });
     usLabel = 'MCB ' + SC_CURVES[curve].label + ' ' + usIn + 'A';
   } else if (usType === 'fuse') {
-    usTripLo = usIn * SC_FUSE_FACTOR;
-    usTripHi = usTripLo;
-    usTripModes.push({ name: 'gG ' + usIn + 'A', lo: usTripLo, hi: usTripHi });
-    usLabel = 'Fuse gG ' + usIn + 'A';
+    const upDt = document.getElementById('sc-up-disc-time')?.value || '5';
+    const upKa = getFuseKa(upDt);
+    usTripLo = usIn * upKa.lo;
+    usTripHi = usIn * upKa.hi;
+    usTripModes.push({ name: 'gG ' + usIn + 'A (≤' + upDt + 's)', lo: usTripLo, hi: usTripHi });
+    usLabel = 'Fuse gG ' + usIn + 'A (≤' + upDt + 's, IEC 60269-2 Annex B)';
   } else if (usType === 'mccb') {
     const Ir  = parseFloat(document.getElementById('sc-up-ir')?.value);
     const Isd = parseFloat(document.getElementById('sc-up-isd')?.value);
@@ -642,8 +661,10 @@ function scCalculate() {
   // ── trip thresholds ───────────────────────────────────────────────────────
   const curveSel = document.getElementById('sc-dev-curve').value;
   const isFuse   = devType === 'fuse';
-  const tripLo   = isFuse ? SC_FUSE_FACTOR * In : SC_CURVES[curveSel].min * In;   // device MAY trip
-  const tripHi   = isFuse ? SC_FUSE_FACTOR * In : SC_CURVES[curveSel].max * In;   // device WILL trip
+  const discTime = isFuse ? (document.getElementById('sc-disc-time')?.value || '5') : null;
+  const fuseKa   = isFuse ? getFuseKa(discTime) : null;
+  const tripLo   = isFuse ? fuseKa.lo * In : SC_CURVES[curveSel].min * In;   // device MAY trip
+  const tripHi   = isFuse ? fuseKa.hi * In : SC_CURVES[curveSel].max * In;   // device WILL trip
   const Ik1_min_A = Ik1_min * 1000;
 
   // Trip state: 0=no trip, 1=uncertain (in transition band), 2=guaranteed
@@ -710,7 +731,7 @@ function scCalculate() {
     tripBox.className = 'sc-trip-box sc-trip-fail';
     tripStatus.textContent = '❌ No guaranteed trip — Ik1_min < ' + tripLo.toFixed(0) + ' A';
   }
-  const curveLabel = isFuse ? 'gG fuse' : SC_CURVES[curveSel].label;
+  const curveLabel = isFuse ? 'gG fuse ≤' + discTime + 's' : SC_CURVES[curveSel].label;
   tripDetail.textContent =
     'Ik1: ' + fmtIkVal(Ik1_min) + ' … ' + fmtIkVal(Ik1_max) +
     '   |   Trip lo=' + tripLo.toFixed(0) + ' A  hi=' + tripHi.toFixed(0) + ' A';
@@ -815,8 +836,16 @@ function scCalculate() {
     '',
     '=== Trip verification ===',
     'Device: ' + devType.toUpperCase() + '   In = ' + In + ' A   Curve: ' + curveLabel,
-    'May trip above (lower bound):      ' + tripLo.toFixed(0) + ' A',
-    'Guaranteed trip (upper bound): ' + tripHi.toFixed(0) + ' A  [IEC 60898 — used for L_max]',
+    ...(isFuse ? [
+      'Disconnection time: ≤' + discTime + ' s  (IEC 60364-4-41 §411.3.2)',
+      'k_a multipliers (IEC 60269-2 Annex B):  lo=' + fuseKa.lo + '  hi=' + fuseKa.hi,
+      'I_a lo (may trip):        ' + tripLo.toFixed(0) + ' A  [k_a_lo × In]',
+      'I_a hi (guaranteed trip): ' + tripHi.toFixed(0) + ' A  [k_a_hi × In — used for L_max]',
+      'I₂ (conventional fusing, overload only): ' + (SC_FUSE_FACTOR * In).toFixed(0) + ' A  [1.6 × In, IEC 60269-2]',
+    ] : [
+      'May trip above (lower bound):      ' + tripLo.toFixed(0) + ' A',
+      'Guaranteed trip (upper bound): ' + tripHi.toFixed(0) + ' A  [IEC 60898 — used for L_max]',
+    ]),
     'Ik1_min = ' + fmtIkVal(Ik1_min) + '   =>   ' + ['NO TRIP', 'UNCERTAIN (transition band)', 'GUARANTEED TRIP'][tripState],
     '',
     '=== Breaking capacity ===',
@@ -1348,7 +1377,11 @@ function dcUpdateTripHint() {
   const hint = document.getElementById('dc-trip-hint');
   if (!hint) return;
   if (type === 'fuse') {
-    hint.textContent = 'gG: I2 ≈ 1.6 × In = ' + (SC_FUSE_FACTOR * In).toFixed(0) + ' A';
+    const t  = document.getElementById('dc-disc-time')?.value || '5';
+    const ka = getFuseKa(t);
+    hint.textContent =
+      'I_a: ' + (ka.lo * In).toFixed(0) + '…' + (ka.hi * In).toFixed(0) +
+      ' A  |  I₂ = 1.6 × In = ' + (SC_FUSE_FACTOR * In).toFixed(0) + ' A (IEC 60269-2)';
     return;
   }
   const curve = document.getElementById('dc-dev-curve')?.value;
@@ -1391,8 +1424,10 @@ function dcOnSrcTypeChange() {
 
 function dcOnDevTypeChange() {
   const type = document.getElementById('dc-dev-type')?.value;
-  const curveFld = document.getElementById('dc-curve-fld');
-  if (curveFld) curveFld.style.display = type === 'fuse' ? 'none' : 'flex';
+  const curveInner = document.getElementById('dc-curve-inner');
+  const discInner  = document.getElementById('dc-disc-time-inner');
+  if (curveInner) curveInner.style.display = type === 'fuse' ? 'none' : '';
+  if (discInner)  discInner.style.display  = type === 'fuse' ? '' : 'none';
   dcUpdateTripHint();
 }
 
@@ -1442,10 +1477,12 @@ function dcCalculate() {
   }
   if (isNaN(lpm) || lpm < 0) return fail('Cable inductance must be ≥ 0.');
 
-  const isFuse = devType === 'fuse';
-  const curveSel = document.getElementById('dc-dev-curve')?.value;
-  const tripLo = isFuse ? SC_FUSE_FACTOR * In : SC_CURVES[curveSel].min * In;
-  const tripHi = isFuse ? SC_FUSE_FACTOR * In : SC_CURVES[curveSel].max * In;
+  const isFuse     = devType === 'fuse';
+  const curveSel   = document.getElementById('dc-dev-curve')?.value;
+  const dcDiscTime = isFuse ? (document.getElementById('dc-disc-time')?.value || '5') : null;
+  const dcFuseKa   = isFuse ? getFuseKa(dcDiscTime) : null;
+  const tripLo     = isFuse ? dcFuseKa.lo * In : SC_CURVES[curveSel].min * In;
+  const tripHi     = isFuse ? dcFuseKa.hi * In : SC_CURVES[curveSel].max * In;
 
   // ── SMPS mode ──────────────────────────────────────────────────────────────
   if (dcSrcType === 'smps') {
@@ -1453,7 +1490,7 @@ function dcCalculate() {
     if (isNaN(I_lim) || I_lim <= 0) return fail('Enter a valid SMPS current limit.');
 
     const tripState = I_lim >= tripHi ? 2 : (I_lim >= tripLo ? 1 : 0);
-    const curveLabel = isFuse ? 'gG fuse' : SC_CURVES[curveSel].label;
+    const curveLabel = isFuse ? 'gG fuse ≤' + dcDiscTime + 's' : SC_CURVES[curveSel].label;
 
     // Impedance display (cable only — R_source not applicable)
     const rhoHot = dcGetRhoHot();
@@ -1485,8 +1522,16 @@ function dcCalculate() {
       '',
       '=== Trip verification ===',
       'Device: ' + devType.toUpperCase() + '   In = ' + In + ' A   Curve: ' + curveLabel,
-      'May trip above:        ' + tripLo.toFixed(0) + ' A',
-      'Guaranteed trip above: ' + tripHi.toFixed(0) + ' A',
+      ...(isFuse ? [
+        'Disconnection time: ≤' + dcDiscTime + ' s  (IEC 60364-4-41 §411.3.2)',
+        'k_a (IEC 60269-2 Annex B):  lo=' + dcFuseKa.lo + '  hi=' + dcFuseKa.hi,
+        'I_a lo (may trip):        ' + tripLo.toFixed(0) + ' A',
+        'I_a hi (guaranteed trip): ' + tripHi.toFixed(0) + ' A',
+        'I₂ (conventional fusing, overload): ' + (SC_FUSE_FACTOR * In).toFixed(0) + ' A  [1.6 × In, IEC 60269-2]',
+      ] : [
+        'May trip above:        ' + tripLo.toFixed(0) + ' A',
+        'Guaranteed trip above: ' + tripHi.toFixed(0) + ' A',
+      ]),
       'I_lim = ' + I_lim.toFixed(0) + ' A => ' + ['NO TRIP', 'UNCERTAIN', 'GUARANTEED TRIP'][tripState],
       '',
       'WARNING: SMPS current limit may fold back under fault.',
@@ -1547,7 +1592,7 @@ function dcCalculate() {
     const tau_ms    = tau_s * 1000;
     const tau3_ms   = 3 * tau_ms;
 
-    const curveLabel = isFuse ? 'gG fuse' : SC_CURVES[curveSel].label;
+    const curveLabel = isFuse ? 'gG fuse ≤' + dcDiscTime + 's' : SC_CURVES[curveSel].label;
     const tripState  = Ik_min >= tripHi ? 2 : (Ik_min >= tripLo ? 1 : 0);
 
     const exceedsIcu     = Ik_max / 1000 > Icu_kA;
@@ -1684,8 +1729,16 @@ function dcCalculate() {
     batLines.push('');
     batLines.push('=== Trip verification ===');
     batLines.push('Device: ' + devType.toUpperCase() + '   In = ' + In + ' A   Curve: ' + curveLabel);
-    batLines.push('May trip above:        ' + tripLo.toFixed(0) + ' A');
-    batLines.push('Guaranteed trip above: ' + tripHi.toFixed(0) + ' A');
+    if (isFuse) {
+      batLines.push('Disconnection time: ≤' + dcDiscTime + ' s  (IEC 60364-4-41 §411.3.2)');
+      batLines.push('k_a (IEC 60269-2 Annex B):  lo=' + dcFuseKa.lo + '  hi=' + dcFuseKa.hi);
+      batLines.push('I_a lo (may trip):        ' + tripLo.toFixed(0) + ' A');
+      batLines.push('I_a hi (guaranteed trip): ' + tripHi.toFixed(0) + ' A');
+      batLines.push('I₂ (conventional fusing, overload): ' + (SC_FUSE_FACTOR * In).toFixed(0) + ' A  [1.6 × In, IEC 60269-2]');
+    } else {
+      batLines.push('May trip above:        ' + tripLo.toFixed(0) + ' A');
+      batLines.push('Guaranteed trip above: ' + tripHi.toFixed(0) + ' A');
+    }
     batLines.push('Ik_min = ' + fmtA(Ik_min) + '   =>   ' + ['NO TRIP', 'UNCERTAIN (transition band)', 'GUARANTEED TRIP'][tripState]);
     batLines.push('');
     batLines.push('=== Breaking capacity ===');
@@ -1788,7 +1841,7 @@ function dcCalculate() {
   document.getElementById('dc-r-tau').textContent    = engRound(tau_ms, 3) + ' ms';
   document.getElementById('dc-r-3tau').textContent   = engRound(tau3_ms, 3) + ' ms';
 
-  const curveLabel = isFuse ? 'gG fuse' : SC_CURVES[curveSel].label;
+  const curveLabel = isFuse ? 'gG fuse ≤' + dcDiscTime + 's' : SC_CURVES[curveSel].label;
   _dcSetTripBox(tripState, Ik_min, Ik_max, tripLo, tripHi);
   document.getElementById('dc-smps-warn').style.display = 'none';
 
@@ -1854,8 +1907,16 @@ function dcCalculate() {
     '',
     '=== Trip verification ===',
     'Device: ' + devType.toUpperCase() + '   In = ' + In + ' A   Curve: ' + curveLabel,
-    'May trip above (lower bound):      ' + tripLo.toFixed(0) + ' A',
-    'Guaranteed trip (upper bound): ' + tripHi.toFixed(0) + ' A',
+    ...(isFuse ? [
+      'Disconnection time: ≤' + dcDiscTime + ' s  (IEC 60364-4-41 §411.3.2)',
+      'k_a (IEC 60269-2 Annex B):  lo=' + dcFuseKa.lo + '  hi=' + dcFuseKa.hi,
+      'I_a lo (may trip):        ' + tripLo.toFixed(0) + ' A',
+      'I_a hi (guaranteed trip): ' + tripHi.toFixed(0) + ' A  [used for L_max]',
+      'I₂ (conventional fusing, overload): ' + (SC_FUSE_FACTOR * In).toFixed(0) + ' A  [1.6 × In, IEC 60269-2]',
+    ] : [
+      'May trip above (lower bound):      ' + tripLo.toFixed(0) + ' A',
+      'Guaranteed trip (upper bound): ' + tripHi.toFixed(0) + ' A',
+    ]),
     'Ik_min = ' + fmtA(Ik_min) + '   =>   ' + ['NO TRIP', 'UNCERTAIN (transition band)', 'GUARANTEED TRIP'][tripState],
     '',
     '=== Breaking capacity ===',

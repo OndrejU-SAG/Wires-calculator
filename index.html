@@ -590,15 +590,27 @@
     </div>
     <div class="row c2">
       <div class="fld" id="sc-curve-fld" style="display:flex;flex-direction:column;gap:4px">
-        <label data-t="scDevCurve">Charakteristika</label>
-        <div class="fld-inner">
-          <select id="sc-dev-curve" onchange="scUpdateTripHint()" style="padding-left:9px">
-            <option value="B">B (3–5 × In)</option>
-            <option value="C" selected>C (5–10 × In)</option>
-            <option value="D">D (10–20 × In)</option>
-            <option value="K">K (8–14 × In)</option>
-            <option value="Z">Z (2–3 × In)</option>
-          </select>
+        <div id="sc-curve-inner">
+          <label data-t="scDevCurve">Charakteristika</label>
+          <div class="fld-inner">
+            <select id="sc-dev-curve" onchange="scUpdateTripHint()" style="padding-left:9px">
+              <option value="B">B (3–5 × In)</option>
+              <option value="C" selected>C (5–10 × In)</option>
+              <option value="D">D (10–20 × In)</option>
+              <option value="K">K (8–14 × In)</option>
+              <option value="Z">Z (2–3 × In)</option>
+            </select>
+          </div>
+        </div>
+        <div id="sc-disc-time-inner" style="display:none">
+          <label data-t="scDiscTime">Požadovaná doba odpojení</label>
+          <div class="fld-inner">
+            <select id="sc-disc-time" onchange="scUpdateTripHint()" style="padding-left:9px">
+              <option value="5">≤ 5 s (distribuční obvody)</option>
+              <option value="0.4" selected>≤ 0.4 s (koncové obvody ≤ 32 A)</option>
+              <option value="0.1">≤ 0.1 s (citlivé / zásuvky)</option>
+            </select>
+          </div>
         </div>
         <div class="fld-hint" id="sc-trip-hint">Min. magnetický proud: 80 A</div>
       </div>
@@ -681,8 +693,20 @@
           </div>
         </div>
       </div>
-      <!-- Fuse gG label -->
-      <div id="sc-sel-fuse-hint" class="fld-hint" style="display:none;margin-top:6px">gG: I₂ = 1.6 × In_up  (IEC 60269-2) — pevná charakteristika</div>
+      <!-- Fuse gG disconnection time -->
+      <div id="sc-sel-fuse-hint" style="display:none;margin-top:6px">
+        <div class="fld">
+          <label data-t="scDiscTime">Požadovaná doba odpojení (nadřazený)</label>
+          <div class="fld-inner">
+            <select id="sc-up-disc-time" style="padding-left:9px">
+              <option value="5">≤ 5 s (distribuční obvody)</option>
+              <option value="0.4" selected>≤ 0.4 s (koncové obvody ≤ 32 A)</option>
+              <option value="0.1">≤ 0.1 s (citlivé / zásuvky)</option>
+            </select>
+          </div>
+          <div class="fld-hint">gG: k_a dle IEC 60269-2 Annex B — I₂ = 1.6 × In_up (přetíž., info)</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -964,14 +988,26 @@
         </div>
       </div>
       <div class="row c2">
-        <div class="fld" id="dc-curve-fld">
-          <label data-t="scDevCurve">Trip curve</label>
-          <div class="fld-inner">
-            <select id="dc-dev-curve" onchange="dcUpdateTripHint()" style="padding-left:9px">
-              <option value="B">B (3–5 × In)</option>
-              <option value="C" selected>C (5–10 × In)</option>
-              <option value="D">D (10–20 × In)</option>
-            </select>
+        <div class="fld" id="dc-curve-fld" style="display:flex;flex-direction:column;gap:4px">
+          <div id="dc-curve-inner">
+            <label data-t="scDevCurve">Trip curve</label>
+            <div class="fld-inner">
+              <select id="dc-dev-curve" onchange="dcUpdateTripHint()" style="padding-left:9px">
+                <option value="B">B (3–5 × In)</option>
+                <option value="C" selected>C (5–10 × In)</option>
+                <option value="D">D (10–20 × In)</option>
+              </select>
+            </div>
+          </div>
+          <div id="dc-disc-time-inner" style="display:none">
+            <label data-t="scDiscTime">Required disconnection time</label>
+            <div class="fld-inner">
+              <select id="dc-disc-time" onchange="dcUpdateTripHint()" style="padding-left:9px">
+                <option value="5">≤ 5 s (distribution circuits)</option>
+                <option value="0.4" selected>≤ 0.4 s (final circuits ≤ 32 A)</option>
+                <option value="0.1">≤ 0.1 s (sensitive / socket outlets)</option>
+              </select>
+            </div>
           </div>
           <div class="fld-hint" id="dc-trip-hint">—</div>
         </div>
