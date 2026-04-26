@@ -22,8 +22,8 @@ const TRAY_XSEC_LIST = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120];
  *                 applied uniformly to power, signal, and mixed cable scenarios.
  */
 const TRAY_LIMITS = {
-  single: { iec: 53, nec: 53 },
-  two:    { iec: 31, nec: 31 },
+  single: { iec: 40, nec: 53 },   // IEC: Annex B no separate 1-cable case; 40% conservative limit applied
+  two:    { iec: 40, nec: 31 },   // IEC: same Annex B; NEC: Ch.9 T.1
   power:  { iec: 40, nec: 50 },
   signal: { iec: 40, nec: 50 },
   mixed:  { iec: 40, nec: 50 }
@@ -398,6 +398,10 @@ function trayCalculate() {
       'ℹ IEC 60364-5-52 Annex B defines percentage fill limits for conduit systems. Applying these limits to cable trays is conservative engineering practice, not a direct normative requirement.';
   }
 
+  const iec12CableNote = (_trayStandard === 'iec' && totalCount <= 2);
+  const iec12El = document.getElementById('tray-iec-12cable-note');
+  iec12El.style.display = iec12CableNote ? 'flex' : 'none';
+
   /* Rule info line */
   document.getElementById('tray-rule-info').textContent =
     activeLimit + '% — ' + standardName + ' — ' + ruleDesc +
@@ -408,7 +412,7 @@ function trayCalculate() {
     fillPct, totalCableArea, trayArea: geom.area, remaining, activeLimit,
     ruleKey, ruleDesc, standardName, statusClass, statusKey,
     additional, mostCommonOd, totalCount, types: [...types],
-    stackWarn, worstCaseStackHeight, mixed, necSolidNote, iecTrayDisclaimer,
+    stackWarn, worstCaseStackHeight, mixed, necSolidNote, iecTrayDisclaimer, iec12CableNote,
     geomMode: _trayGeomMode, trayType: _trayTrayType, conduitType: _trayConduitType, geom
   };
 }
@@ -663,7 +667,7 @@ function trayDownloadPdf() {
   y += 20;
 
   /* Warnings */
-  if (r.stackWarn || r.mixed || r.iecTrayDisclaimer) {
+  if (r.stackWarn || r.mixed || r.iecTrayDisclaimer || r.iec12CableNote) {
     if (y > PH - M - 20) { doc.addPage(); drawHeader(_curPage(), 1); y = M + 22; }
     doc.setFontSize(9); doc.setFont('helvetica', 'normal');
     doc.setTextColor(180, 100, 0);
@@ -681,6 +685,11 @@ function trayDownloadPdf() {
       doc.setTextColor(26, 82, 118);
       doc.text(pdfSafe('Note: IEC 60364-5-52 Annex B defines fill limits for conduit systems. Applying these limits to cable trays is conservative engineering practice, not a direct normative requirement.'), M, y, { maxWidth: CW });
       y += 10;
+    }
+    if (r.iec12CableNote) {
+      doc.setTextColor(26, 82, 118);
+      doc.text(pdfSafe('Note: IEC 60364-5-52 Annex B does not separate 1/2-cable cases; 40 % conservative limit applied.'), M, y, { maxWidth: CW });
+      y += 6;
     }
     y += 2;
   }
