@@ -44,11 +44,19 @@ const TS8_SIZES = [
   [2000, 800, 600], [2000, 1000, 500], [2000, 1200, 600],
 ];
 
+/* ---- IEC 61439-1 §10.10 Table 6 — ΔT limits by measurement point ---- */
+const SB_DT_LIMITS = {
+  'manual-ext': { warn: 12, max: 15, label: 'External manual operators (metallic)' },
+  'manual-int': { warn: 22, max: 25, label: 'Internal manual operators' },
+  'enclosure':  { warn: 25, max: 30, label: 'Enclosure outer wall / components in declared range' },
+  'terminals':  { warn: 60, max: 70, label: 'External conductor terminals' },
+};
+
 /* ---- English-only status strings for PDF ---- */
 const SB_STATUS_ENG = {
   ok:   'Well within limits',
-  warn: 'Acceptable',
-  err:  'Exceeds IEC 61439 limit',
+  warn: 'Acceptable — approaching limit',
+  err:  'Exceeds IEC 61439-1 Table 6 limit',
 };
 
 /* ===== AWG → mm² — always from formula, never hardcoded ===== */
@@ -371,6 +379,10 @@ function sbApplyKPreset(val) {
   sbKChanged();
 }
 
+function sbMeasPointChanged() {
+  if (document.getElementById('sb-res-card').style.display === 'block') sbCalculate();
+}
+
 /* ===================================================================
    SECTION 4 — VENTILATION
    =================================================================== */
@@ -468,9 +480,11 @@ function _sbShowResults(r) {
   const { P_cables, P_devices, Pt, Ae_total, dT, Ta } = r;
   const Ti = Ta + dT;
 
+  const measPoint = document.getElementById('sb-meas-point')?.value || 'enclosure';
+  const lim = SB_DT_LIMITS[measPoint] ?? SB_DT_LIMITS['enclosure'];
   let statusClass, statusKey;
-  if (dT <= 10) { statusClass = 'green'; statusKey = 'ok'; }
-  else if (dT <= 15) { statusClass = 'yellow'; statusKey = 'warn'; }
+  if (dT <= lim.warn) { statusClass = 'green'; statusKey = 'ok'; }
+  else if (dT <= lim.max) { statusClass = 'yellow'; statusKey = 'warn'; }
   else { statusClass = 'red'; statusKey = 'err'; }
 
   document.getElementById('sb-r-cables').textContent = P_cables.toFixed(2) + ' W';
@@ -486,12 +500,15 @@ function _sbShowResults(r) {
 
   document.getElementById('sb-status-hot').style.display = Ti > 55 ? 'block' : 'none';
 
+  const limitNoteEl = document.getElementById('sb-r-limit-note');
+  if (limitNoteEl) limitNoteEl.textContent = `IEC 61439-1 §10.10 Table 6 — ${lim.label}: ΔT_warn = ${lim.warn} K, ΔT_max = ${lim.max} K`;
+
   _sbBuildSteps(r, dT, Ti);
 
   document.getElementById('sb-res-card').style.display = 'block';
   document.getElementById('sb-res-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-  window._sbLastResult = { ...r, dT, Ti, statusClass, statusKey };
+  window._sbLastResult = { ...r, dT, Ti, statusClass, statusKey, measPoint, lim };
 }
 
 function _sbBuildSteps(r, dT, Ti) {
@@ -574,9 +591,13 @@ function _sbBuildSteps(r, dT, Ti) {
 
   lines.push(`${step++}. Internal temperature:\n   Ti = Ta + ΔT = ${Ta} + ${dT.toFixed(2)} = ${Ti.toFixed(2)} °C`);
 
-  const limitNote = dT <= 10 ? '✓ Within IEC 61439 limit (ΔT_max = 15 K)'
-    : dT <= 15 ? '⚠ Within limit but close to maximum'
-    : '✗ Exceeds IEC 61439 limit (ΔT_max = 15 K) — consider larger enclosure or forced ventilation';
+  const measPoint = document.getElementById('sb-meas-point')?.value || 'enclosure';
+  const lim = SB_DT_LIMITS[measPoint] ?? SB_DT_LIMITS['enclosure'];
+  const limitNote = dT <= lim.warn
+    ? `✓ Within IEC 61439-1 §10.10 Table 6 limit\n   ${lim.label}: ΔT = ${dT.toFixed(2)} K ≤ ΔT_max = ${lim.max} K`
+    : dT <= lim.max
+    ? `⚠ Acceptable but approaching limit — IEC 61439-1 §10.10 Table 6\n   ${lim.label}: ΔT = ${dT.toFixed(2)} K ≤ ΔT_max = ${lim.max} K`
+    : `✗ Exceeds IEC 61439-1 §10.10 Table 6 limit\n   ${lim.label}: ΔT = ${dT.toFixed(2)} K > ΔT_max = ${lim.max} K — consider larger enclosure or forced ventilation`;
   lines.push(`Conclusion: ${limitNote}`);
 
   document.getElementById('sb-steps').textContent = lines.join('\n\n');
@@ -782,6 +803,7 @@ async function sbDownloadPdf() {
       ['Effective cooling area Ae', r.Ae_total.toFixed(4) + ' m²'],
       ['Natural ventilation',   natOn ? `On (top: ${document.getElementById('sb-open-top').value || 0} cm², bot: ${document.getElementById('sb-open-bot').value || 0} cm²)` : 'Off'],
       ['Forced ventilation',    forceOn ? `On (${document.getElementById('sb-airflow').value || 0} m³/h)` : 'Off'],
+      ['Measurement point (IEC 61439-1 Table 6)', r.lim ? `${r.lim.label} (ΔT_max ${r.lim.max} K)` : '—'],
     ]);
     y += 5;
 

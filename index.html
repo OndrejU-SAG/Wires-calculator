@@ -408,6 +408,17 @@
         <input type="file" id="sb-photo1" accept="image/*" class="sb-file-input">
         <input type="file" id="sb-photo2" accept="image/*" class="sb-file-input">
       </div></div>
+    <div class="fld" style="margin-bottom:12px">
+      <label data-t="sbMeasPoint">Měřicí místo (IEC 61439-1 Tab. 6)</label>
+      <div class="fld-inner">
+        <select id="sb-meas-point" onchange="sbMeasPointChanged()" style="padding-left:9px">
+          <option value="manual-ext" data-t="sbMeasManualExt">Vnější obsluha — ΔT max 15 K</option>
+          <option value="manual-int" data-t="sbMeasManualInt">Vnitřní obsluha — ΔT max 25 K</option>
+          <option value="enclosure" selected data-t="sbMeasEnclosure">Skříň / komponenty — ΔT max 30 K</option>
+          <option value="terminals" data-t="sbMeasTerminals">Svorky — ΔT max 70 K</option>
+        </select>
+      </div>
+    </div>
     <div id="sb-err" class="err-box"></div>
     <button class="btn-primary" onclick="sbCalculate()" data-t="sbCalcBtn">🌡 Vypočítat ohřev</button>
   </div>
@@ -424,6 +435,7 @@
       <div class="sb-res-row"><span class="sb-res-label" data-t="sbResTi">Vnitřní teplota Ti</span><span class="sb-res-value" id="sb-r-ti">—</span></div>
       <div class="sb-res-row"><span class="sb-res-label" data-t="sbResStatus">Stav</span><span id="sb-r-status" class="sb-status-badge green">—</span></div>
     </div>
+    <div class="fld-hint" id="sb-r-limit-note" style="margin-top:4px;font-size:11px;color:var(--on-surf-var)"></div>
     <div class="sb-status-hot" id="sb-status-hot" data-t="sbStatusHot">Vnitřní teplota může překročit jmenovitou teplotu komponent — ověřte</div>
     <div class="res-lbl" style="margin-top:14px">Postup výpočtu</div>
     <pre class="sb-steps" id="sb-steps"></pre>
