@@ -132,6 +132,7 @@ function mscCalcVdOnly() {
     return;
   }
 
+  const freq     = parseFloat(document.getElementById('msc-freq').value);
   const mat      = MATERIAL[mscMaterial];
   const rho_cold = mat.rho20;                                           // 20 °C — cold cable (starting transient)
   const rho_run  = mat.rho20 * (1 + mat.alpha * (Tcable - 20));        // at operating temp — IEC 60364-5-52 §G.52.2
@@ -139,7 +140,7 @@ function mscCalcVdOnly() {
   const In     = (Pn * 1000) / (Math.sqrt(3) * Un * cosN * eta);
   const Istart = kstart * In;
 
-  const Rcable = rho_cold * L / S * (1 + skinEffectYs(50, rho_cold / S));
+  const Rcable = rho_cold * L / S * (1 + skinEffectYs(freq, rho_cold / S));
   const Xcable = 0.08 * L / 1000;
 
   const Zs = Un / (Math.sqrt(3) * Ik * 1000);
@@ -196,7 +197,7 @@ function mscCalcVdOnly() {
   const matName    = mscMaterial === 'cu' ? 'Cu' : 'Al';
 
   document.getElementById('msc-steps').textContent =
-`Method: ${methodName}  |  Material: ${matName}
+`Method: ${methodName}  |  Material: ${matName}  |  Frequency: ${freq} Hz
 Ref: IEC 60364-5-52 §G.52.2 — temperature-corrected resistivity
 ────────────────────────────────────────────────────────
 1. Rated current
@@ -281,6 +282,7 @@ function mscCalcFullSizing() {
     return;
   }
 
+  const freq     = parseFloat(document.getElementById('msc-freq').value);
   const mat      = MATERIAL[mscMaterial];
   const rho_cold = mat.rho20;                                     // 20 °C — cold cable (starting transient)
   const rho_run  = mat.rho20 * (1 + mat.alpha * (Tcable - 20));  // at operating temp — IEC 60364-5-52 §G.52.2
@@ -314,8 +316,8 @@ function mscCalcFullSizing() {
     const Iz      = ampTable[instMethod][i];
     const Iz_eff  = Iz * Ca * Cg * Crho * utilisation;
 
-    const Rcable_run   = rho_run  * L / S * (1 + skinEffectYs(50, rho_run  / S));
-    const Rcable_start = rho_cold * L / S * (1 + skinEffectYs(50, rho_cold / S));
+    const Rcable_run   = rho_run  * L / S * (1 + skinEffectYs(freq, rho_run  / S));
+    const Rcable_start = rho_cold * L / S * (1 + skinEffectYs(freq, rho_cold / S));
     const Xcable       = Xkm * L / 1000;
 
     const dU_run       = vdFactor * In     * (Rcable_run   * cosN     + Xcable * sinN);
@@ -338,7 +340,7 @@ function mscCalcFullSizing() {
   const caRow = IEC_CA_TEMPS.map((t, i) => `${t} °C → ${IEC_CA_PVC70[i].toFixed(2)}`).join('  |  ');
   const cgRow = IEC_CG_TABLE.map((v, i) => `n=${i + 1}: ${v.toFixed(2)}`).join('  |  ');
   let stepsText =
-`Method: ${methodName}  |  Material: ${matLabel}  |  System: ${phaseLabel}
+`Method: ${methodName}  |  Material: ${matLabel}  |  Frequency: ${freq} Hz  |  System: ${phaseLabel}
 Cable: ${cableType === 'single' ? 'Single-core' : 'Multi-core'} (X = ${Xkm * 1000} mOhm/km)
 Installation: ${instLabel}
 Ref: IEC 60364-5-52 §G.52.2 + Annex B (Tables B.52.14, B.52.17${instMethod === 'burial' ? ', B.52.20' : ''})
@@ -386,8 +388,8 @@ ${instMethod === 'burial' ? `
 
   if (found) {
     const { S, Iz, Iz_eff, Rcable_run, Rcable_start, Xcable, dU_run, dU_run_pct, dU_start, dU_start_pct, vdRunOk, vdStartOk } = found;
-    const ys_run   = skinEffectYs(50, rho_run  / S);
-    const ys_cold  = skinEffectYs(50, rho_cold / S);
+    const ys_run   = skinEffectYs(freq, rho_run  / S);
+    const ys_cold  = skinEffectYs(freq, rho_cold / S);
     stepsText +=
 `
    Recommended: ${S} mm²
@@ -525,7 +527,7 @@ ${instMethod === 'burial' ? `
     Pn, Un, cosN, eta, cosStart, kstart, L, maxVdRun, maxVdStart,
     method, methodName, cableType, instMethod, instLabel, phases, phaseLabel,
     In, Istart, sinN, sinStart, Tcable, rho_cold, rho_run, Xkm, vdFactor, InFactor, matLabel,
-    ambTemp, nGrouping, utilisation, Ca, Cg, Crho,
+    ambTemp, nGrouping, utilisation, Ca, Cg, Crho, freq,
     res, stepsText,
   };
 }
