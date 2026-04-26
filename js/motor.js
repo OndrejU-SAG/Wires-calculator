@@ -98,7 +98,8 @@ function mscCalcVdOnly() {
     return;
   }
 
-  const T = parseFloat(document.getElementById('msc-temp').value) || 70;
+  const tempEl = document.getElementById('msc-temp');
+  const T = tempEl ? parseFloat(tempEl.value) || 70 : 70;
   const alpha = MATERIAL[mscMaterial].alpha;
   const rho20 = MATERIAL[mscMaterial].rho20;
   const rho_run  = rho20 * (1 + alpha * (T - 20));
@@ -128,7 +129,7 @@ function mscCalcVdOnly() {
   document.getElementById('msc-r-zs').textContent     = (Zs * 1000).toFixed(3) + ' mΩ';
   document.getElementById('msc-r-rs').textContent     = (Rs * 1000).toFixed(3) + ' mΩ';
   document.getElementById('msc-r-xs').textContent     = (Xs * 1000).toFixed(3) + ' mΩ';
-  document.getElementById('msc-r-rcable').textContent = (Rcable_run * 1000).toFixed(3) + ' mΩ';
+  document.getElementById('msc-r-rcable').textContent = (Rcable_start * 1000).toFixed(3) + ' mΩ';
   document.getElementById('msc-r-xcable').textContent = (Xcable * 1000).toFixed(3) + ' mΩ';
   document.getElementById('msc-r-rtotal').textContent = (R * 1000).toFixed(3) + ' mΩ';
   document.getElementById('msc-r-xtotal').textContent = (X * 1000).toFixed(3) + ' mΩ';
@@ -237,7 +238,8 @@ function mscCalcFullSizing() {
     return;
   }
 
-  const T = parseFloat(document.getElementById('msc-temp').value) || 70;
+  const tempEl = document.getElementById('msc-temp');
+  const T = tempEl ? parseFloat(tempEl.value) || 70 : 70;
   const rho20 = MATERIAL[mscMaterial].rho20;
   const alpha = MATERIAL[mscMaterial].alpha;
   const rho_run  = rho20 * (1 + alpha * (T - 20));
@@ -697,20 +699,27 @@ function initMotorCalc() {
     sel.appendChild(opt);
   });
 
-  // Add cable operating temperature input
-  const tempField = document.createElement('div');
-  tempField.className = 'fld';
-  tempField.style.marginBottom = '12px';
-  tempField.innerHTML = `
-    <label data-t="mscCondTempLbl">Cable operating temperature</label>
-    <div class="fld-inner">
-      <input type="number" id="msc-temp" value="70" min="0" max="120" step="1">
-      <span class="fld-unit">°C</span>
-    </div>
-    <div class="fld-hint" data-t="mscCondTempHint">IEC 60364-5-52 §G.52.2, ρ = ρ20 × (1 + α×(T−20))</div>
-  `;
-  // Insert after the row containing L and Material (common to both modes)
-  const matBtns = document.querySelector('.msc-mat-btn');
-  const rowC2 = matBtns.closest('.row.c2');
-  rowC2.parentNode.insertBefore(tempField, rowC2.nextSibling);
+  // Add cable operating temperature input - insert after the L/Material row
+  try {
+    const lenField = document.getElementById('msc-len');
+    if (lenField) {
+      const row = lenField.closest('.row.c2');
+      if (row && row.parentNode) {
+        const tempField = document.createElement('div');
+        tempField.className = 'fld';
+        tempField.style.marginBottom = '12px';
+        tempField.innerHTML = `
+          <label data-t="mscCondTempLbl">Cable operating temperature</label>
+          <div class="fld-inner">
+            <input type="number" id="msc-temp" value="70" min="0" max="120" step="1">
+            <span class="fld-unit">°C</span>
+          </div>
+          <div class="fld-hint" data-t="mscCondTempHint">IEC 60364-5-52 §G.52.2, ρ = ρ20 × (1 + α×(T−20))</div>
+        `;
+        row.parentNode.insertBefore(tempField, row.nextSibling);
+      }
+    }
+  } catch (e) {
+    console.error('Failed to add temperature field:', e);
+  }
 }
