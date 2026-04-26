@@ -1,4 +1,4 @@
-# Wire Size Calculator
+# Electrical-engineering-calculator
 
 **A comprehensive web-based electrical engineering tool** for wire sizing, cable tray fill analysis, switchboard temperature rise calculation, short-circuit current computation, motor starting analysis, and MM²↔AWG conversion. Built with pure JavaScript, CSS, and HTML5 — no server required.
 
