@@ -644,5 +644,25 @@ For issues, questions, or contributions:
 
 ---
 
+## Audit by KIMI 2.6 thinking / Claude OPUS 4.7
+
+| Aspect | Rating | Note |
+|---|---|---|
+| **Physical constants (ρ, α)** | ✅ Correct | IEC 60228 Annex B |
+| **Temperature correction of resistance** | ✅ Correct | IEC 60228 Annex B |
+| **Voltage drop** | ✅ Correct | IEC 60364-5-52 §G.52.2 |
+| **Ampacity (Wire Size module)** | ❌ Problematic | Does not use normative tables, Uses analytical model calculations instead |
+| **Ampacity (Motor module)** | ⚠️ Partially correct | Tables are more conservative than IEC |
+| **Correction factors (Ca, Cg)** | ✅ Correct | IEC 60364-5-52 Annex B |
+| **Skin effect** | ⚠️ Simplified | IEC 60287, without proximity effect |
+| **Short-circuit current (AC)** | ✅ Correct | IEC 60909, incl. c_max/c_min |
+| **Short-circuit current (DC)** | ✅ Correct | IEC 61660-1 / resistive method |
+| **Cable thermal withstand** | ✅ Correct | IEC 60364-4-43 §434.5 |
+| **Protective conductor PE** | ✅ Correct | IEC 60364-5-54 Tab. 54.2 + adiabatic method |
+| **Selectivity analysis** | ✅ Good | Logarithmic visualisation of trip bands |
+| **Enclosure heat dissipation** | ✅ Correct | IEC 61439 / IEC 60890 |
+| **Cable tray/conduit fill** | ⚠️ Acceptable | IEC limit applies to conduits, conservative for trays |
+| **AWG conversion** | ✅ Accurate | Standard formulas |
+
 *Last updated: April 2025*
 *Version: Comprehensive electrical engineering calculator with 6 integrated modules*
