@@ -8,7 +8,7 @@
 
 The calculator provides **six integrated modules**, each addressing a critical aspect of electrical system design:
 
-### 🔢 1. **Electrical-engineering-calculator** (`calculator.js`, `core.js`)
+### 🔢 1. **Wire sizing** (`calculator.js`, `core.js`)
 **IEC 60228 / IEC 60364-5-52 Compliant**
 
 Determines minimum required conductor cross-section based on two limiting factors, evaluated in parallel:
