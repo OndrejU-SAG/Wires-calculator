@@ -98,26 +98,19 @@ function mscCalcVdOnly() {
     return;
   }
 
-  const tempEl = document.getElementById('msc-temp');
-  const T = tempEl ? parseFloat(tempEl.value) || 70 : 70;
-  const alpha = MATERIAL[mscMaterial].alpha;
-  const rho20 = MATERIAL[mscMaterial].rho20;
-  const rho_run  = rho20 * (1 + alpha * (T - 20));
-  const rho_start = rho20;  // Cold cable at 20°C reference
+  const rho = MATERIAL[mscMaterial].rho20 * (1 + MATERIAL[mscMaterial].alpha * (70 - 20));
 
   const In     = (Pn * 1000) / (Math.sqrt(3) * Un * cosN * eta);
   const Istart = kstart * In;
 
-  const Rcable_run  = rho_run * L / S * (1 + skinEffectYs(50, rho_run / S));
-  const Rcable_start = rho_start * L / S * (1 + skinEffectYs(50, rho_start / S));
+  const Rcable = rho * L / S * (1 + skinEffectYs(50, rho / S));
   const Xcable = 0.08 * L / 1000;
 
   const Zs = Un / (Math.sqrt(3) * Ik * 1000);
   const Rs = Zs * 0.1;
   const Xs = Zs * 0.995;
 
-  // For starting voltage dip, use cold cable (20°C reference)
-  const R = Rs + Rcable_start;
+  const R = Rs + Rcable;
   const X = Xs + Xcable;
 
   const sinStart = Math.sqrt(1 - cosStart * cosStart);
@@ -129,7 +122,7 @@ function mscCalcVdOnly() {
   document.getElementById('msc-r-zs').textContent     = (Zs * 1000).toFixed(3) + ' mΩ';
   document.getElementById('msc-r-rs').textContent     = (Rs * 1000).toFixed(3) + ' mΩ';
   document.getElementById('msc-r-xs').textContent     = (Xs * 1000).toFixed(3) + ' mΩ';
-  document.getElementById('msc-r-rcable').textContent = (Rcable_start * 1000).toFixed(3) + ' mΩ';
+  document.getElementById('msc-r-rcable').textContent = (Rcable * 1000).toFixed(3) + ' mΩ';
   document.getElementById('msc-r-xcable').textContent = (Xcable * 1000).toFixed(3) + ' mΩ';
   document.getElementById('msc-r-rtotal').textContent = (R * 1000).toFixed(3) + ' mΩ';
   document.getElementById('msc-r-xtotal').textContent = (X * 1000).toFixed(3) + ' mΩ';
@@ -164,10 +157,10 @@ function mscCalcVdOnly() {
 
   const methodSel  = document.getElementById('msc-method');
   const methodName = methodSel.options[methodSel.selectedIndex].text;
-  const matLabel   = (mscMaterial === 'cu' ? 'Cu' : 'Al') + ` (ρ20 = ${rho20.toFixed(5)} Ω·mm²/m, α = ${alpha.toFixed(6)})`;
+  const matLabel   = (mscMaterial === 'cu' ? 'Cu' : 'Al') + ` (ρ(70 °C) = ${rho.toFixed(5)} Ω·mm²/m)`;
 
   document.getElementById('msc-steps').textContent =
-`Method: ${methodName}  |  Material: ${matLabel}  |  IEC 60364-5-52 §G.52.2
+`Method: ${methodName}  |  Material: ${matLabel}
 ────────────────────────────────────────────────────────
 1. Rated current
    In = (Pn × 1000) / (√3 × Un × cos φn × η)
@@ -177,27 +170,21 @@ function mscCalcVdOnly() {
 2. Starting current
    Istart = kstart × In = ${kstart} × ${In.toFixed(2)} = ${Istart.toFixed(2)} A
 
-3. Cable resistivity at operating temperature (per IEC 60364-5-52 §G.52.2)
-   ρ(T) = ρ20 × (1 + α × (T − 20))
-   ρ_run (${T} °C, running)   = ${rho20.toFixed(5)} × (1 + ${alpha.toFixed(6)} × (${T} − 20)) = ${rho_run.toFixed(5)} Ω·mm²/m
-   ρ_start (20 °C, cold)    = ${rho20.toFixed(5)} Ω·mm²/m  [starting: transient before cable warms]
-
-4. Cable impedance  (L = ${L} m one-way, S = ${S} mm²)
-   For starting (cold cable, ρ = ${rho_start.toFixed(5)} Ω·mm²/m):
-   Rcable_start = ρ_start × L / S = ${rho_start.toFixed(5)} × ${L} / ${S} = ${Rcable_start.toFixed(5)} Ω  (${(Rcable_start*1000).toFixed(3)} mΩ)
+3. Cable impedance  (L = ${L} m one-way, S = ${S} mm², ρ = ${rho} Ω·mm²/m)
+   Rcable = ρ × L / S = ${rho} × ${L} / ${S} = ${Rcable.toFixed(5)} Ω  (${(Rcable*1000).toFixed(3)} mΩ)
    Xcable ≈ 0.08 × L / 1000 = ${Xcable.toFixed(5)} Ω  (${(Xcable*1000).toFixed(3)} mΩ)
 
-5. Network impedance at busbar  (Ik = ${Ik} kA, Un = ${Un} V)
+4. Network impedance at busbar  (Ik = ${Ik} kA, Un = ${Un} V)
    Zs = Un / (√3 × Ik × 1000) = ${Un} / (1.7321 × ${Ik} × 1000) = ${Zs.toFixed(5)} Ω  (${(Zs*1000).toFixed(3)} mΩ)
    Rs = Zs × 0.1   = ${Rs.toFixed(5)} Ω  (${(Rs*1000).toFixed(3)} mΩ)
    Xs = Zs × 0.995 = ${Xs.toFixed(5)} Ω  (${(Xs*1000).toFixed(3)} mΩ)
    Note: X/R ≈ 10 decomposition — indicative for MV/LV transformer feeds.
 
-6. Total impedance (using cold cable for starting)
-   R = Rs + Rcable_start = ${Rs.toFixed(5)} + ${Rcable_start.toFixed(5)} = ${R.toFixed(5)} Ω
+5. Total impedance
+   R = Rs + Rcable = ${Rs.toFixed(5)} + ${Rcable.toFixed(5)} = ${R.toFixed(5)} Ω
    X = Xs + Xcable = ${Xs.toFixed(5)} + ${Xcable.toFixed(5)} = ${X.toFixed(5)} Ω
 
-7. Starting voltage dip  (cos φstart = ${cosStart}, sin φstart = ${sinStart.toFixed(4)})
+6. Voltage dip  (cos φstart = ${cosStart}, sin φstart = ${sinStart.toFixed(4)})
    ΔU = √3 × Istart × (R × cos φstart + X × sin φstart)
    ΔU = 1.7321 × ${Istart.toFixed(2)} × (${R.toFixed(5)} × ${cosStart} + ${X.toFixed(5)} × ${sinStart.toFixed(4)})
    ΔU = ${dU.toFixed(2)} V
@@ -238,12 +225,7 @@ function mscCalcFullSizing() {
     return;
   }
 
-  const tempEl = document.getElementById('msc-temp');
-  const T = tempEl ? parseFloat(tempEl.value) || 70 : 70;
-  const rho20 = MATERIAL[mscMaterial].rho20;
-  const alpha = MATERIAL[mscMaterial].alpha;
-  const rho_run  = rho20 * (1 + alpha * (T - 20));
-  const rho_start = rho20;  // Cold cable at 20°C reference
+  const rho      = MATERIAL[mscMaterial].rho20 * (1 + MATERIAL[mscMaterial].alpha * (70 - 20));
   const ampTable = mscMaterial === 'cu' ? IEC_AMP_CU : IEC_AMP_AL;
   const Xkm      = cableType === 'single' ? 0.08 : 0.07;  // Ω/km
   const InFactor = phases === 'ac3' ? Math.sqrt(3) : 1;
@@ -268,23 +250,19 @@ function mscCalcFullSizing() {
     const S  = IEC_SIZ_SIZES[i];
     const Iz = ampTable[instMethod][i];
 
-    // Running uses hot cable, starting uses cold cable
-    const Rcable_run  = rho_run * L / S * (1 + skinEffectYs(50, rho_run / S));
-    const Rcable_start = rho_start * L / S * (1 + skinEffectYs(50, rho_start / S));
+    const Rcable = rho * L / S * (1 + skinEffectYs(50, rho / S));
     const Xcable = Xkm * L / 1000;
 
-    const dU_run       = vdFactor * In     * (Rcable_run * cosN     + Xcable * sinN);
-    const dU_start     = vdFactor * Istart * (Rcable_start * cosStart + Xcable * sinStart);
+    const dU_run       = vdFactor * In     * (Rcable * cosN     + Xcable * sinN);
+    const dU_start     = vdFactor * Istart * (Rcable * cosStart + Xcable * sinStart);
     const dU_run_pct   = (dU_run   / Un) * 100;
     const dU_start_pct = (dU_start / Un) * 100;
 
-    const ys_run = skinEffectYs(50, rho_run / S);
-    const ys_start = skinEffectYs(50, rho_start / S);
     const ampOk     = Iz >= In;
     const vdRunOk   = dU_run_pct  <= maxVdRun;
     const vdStartOk = method === 'vfd' || dU_start_pct <= maxVdStart;
 
-    const t = { S, Iz, Rcable_run, Rcable_start, Xcable, dU_run, dU_run_pct, dU_start, dU_start_pct, ampOk, vdRunOk, vdStartOk, ys_run, ys_start };
+    const t = { S, Iz, Rcable, Xcable, dU_run, dU_run_pct, dU_start, dU_start_pct, ampOk, vdRunOk, vdStartOk };
     trials.push(t);
 
     if (!found && ampOk && vdRunOk && vdStartOk) found = t;
@@ -293,7 +271,7 @@ function mscCalcFullSizing() {
   // ── Build step-by-step text ─────────────────────────────────────────────
   const phaseLabel = phases === 'ac3' ? 'AC3 three-phase (factor = sqrt(3))' : 'AC1 single-phase (factor = 2)';
   let stepsText =
-`Method: ${methodName}  |  Material: ${matLabel}  |  System: ${phaseLabel}  |  IEC 60364-5-52 §G.52.2
+`Method: ${methodName}  |  Material: ${matLabel}  |  System: ${phaseLabel}
 Cable: ${cableType === 'single' ? 'Single-core' : 'Multi-core'} (X = ${Xkm * 1000} mOhm/km)
 Installation: ${instLabel}
 ────────────────────────────────────────────────────────────────────
@@ -307,18 +285,14 @@ Installation: ${instLabel}
    sin(phi_n)     = sqrt(1 - ${cosN}^2) = ${sinN.toFixed(4)}
    sin(phi_start) = sqrt(1 - ${cosStart}^2) = ${sinStart.toFixed(4)}
 
-3. Cable resistivity at operating temperature (per IEC 60364-5-52 §G.52.2)
-   ρ(T) = ρ20 × (1 + α × (T − 20))
-   ρ_run (${T} °C, running)   = ${rho20.toFixed(5)} × (1 + ${alpha.toFixed(6)} × (${T} − 20)) = ${rho_run.toFixed(5)} Ω·mm²/m
-   ρ_start (20 °C, cold)    = ${rho20.toFixed(5)} Ω·mm²/m  [starting: transient before cable warms]
+3. Ampacity table: IEC 60364-5-52, ${instLabel}, ${matLabel}, PVC 70°C, 30°C ambient
 
-4. Ampacity table: IEC 60364-5-52, ${instLabel}, ${matLabel}, PVC 70°C, 30°C ambient
-
-5. Iterative sizing — first size satisfying: Iz >= In, dU_run <= ${maxVdRun} %, dU_start <= ${maxVdStart} %
+4. Iterative sizing — first size satisfying: Iz >= In, dU_run <= ${maxVdRun} %, dU_start <= ${maxVdStart} %
 `;
 
   if (found) {
-    const { S, Iz, Rcable_run, Rcable_start, Xcable, dU_run, dU_run_pct, dU_start, dU_start_pct, vdRunOk, vdStartOk, ys_run, ys_start } = found;
+    const { S, Iz, Rcable, Xcable, dU_run, dU_run_pct, dU_start, dU_start_pct, vdRunOk, vdStartOk } = found;
+    const ys = skinEffectYs(50, rho / S);
     stepsText +=
 `
    Recommended: ${S} mm²
@@ -329,19 +303,15 @@ Installation: ${instLabel}
       ${Iz} >= ${In.toFixed(3)} A  [OK]
 
    b) Cable impedance for ${S} mm², L = ${L} m
-      Running (hot cable, ρ_run = ${rho_run.toFixed(5)} Ω·mm²/m, skin effect ys = ${ys_run.toFixed(6)}):
-      Rcable_run = ρ_run * L / S * (1 + ys_run)
-                  = ${rho_run.toFixed(5)} * ${L} / ${S} * (1 + ${ys_run.toFixed(6)})
-                  = ${Rcable_run.toFixed(6)} Ω
-      Starting (cold cable, ρ_start = ${rho_start.toFixed(5)} Ω·mm²/m, skin effect ys = ${ys_start.toFixed(6)}):
-      Rcable_start = ρ_start * L / S * (1 + ys_start)
-                   = ${rho_start.toFixed(5)} * ${L} / ${S} * (1 + ${ys_start.toFixed(6)})
-                   = ${Rcable_start.toFixed(6)} Ω
-      Xcable = Xkm * L / 1000 = ${Xkm} * ${L} / 1000 = ${Xcable.toFixed(6)} Ω
+      rho_AC (skin effect, ys = ${ys.toFixed(6)}) = ${rho} * (1 + ${ys.toFixed(6)}) Ohm*mm^2/m
+      Rcable = rho * L / S * (1 + ys)
+             = ${rho} * ${L} / ${S} * (1 + ${ys.toFixed(6)})
+             = ${Rcable.toFixed(6)} Ohm
+      Xcable = Xkm * L / 1000 = ${Xkm} * ${L} / 1000 = ${Xcable.toFixed(6)} Ohm
 
    c) Running voltage drop  (cos phi_n = ${cosN}, sin phi_n = ${sinN.toFixed(4)})
-      dU_run = ${vdFactor.toFixed(4)} * In * (Rcable_run * cos phi_n + Xcable * sin phi_n)
-             = ${vdFactor.toFixed(4)} * ${In.toFixed(3)} * (${Rcable_run.toFixed(6)} * ${cosN} + ${Xcable.toFixed(6)} * ${sinN.toFixed(4)})
+      dU_run = ${vdFactor.toFixed(4)} * In * (Rcable * cos phi_n + Xcable * sin phi_n)
+             = ${vdFactor.toFixed(4)} * ${In.toFixed(3)} * (${Rcable.toFixed(6)} * ${cosN} + ${Xcable.toFixed(6)} * ${sinN.toFixed(4)})
              = ${dU_run.toFixed(3)} V
       dU_run% = ${dU_run.toFixed(3)} / ${Un} * 100 = ${dU_run_pct.toFixed(3)} %
       Limit: <= ${maxVdRun} %  [${vdRunOk ? 'OK' : 'FAIL'}]
@@ -352,8 +322,8 @@ Installation: ${instLabel}
     } else {
       stepsText +=
 `
-      dU_start = ${vdFactor.toFixed(4)} * Istart * (Rcable_start * cos phi_start + Xcable * sin phi_start)
-               = ${vdFactor.toFixed(4)} * ${Istart.toFixed(3)} * (${Rcable_start.toFixed(6)} * ${cosStart} + ${Xcable.toFixed(6)} * ${sinStart.toFixed(4)})
+      dU_start = ${vdFactor.toFixed(4)} * Istart * (Rcable * cos phi_start + Xcable * sin phi_start)
+               = ${vdFactor.toFixed(4)} * ${Istart.toFixed(3)} * (${Rcable.toFixed(6)} * ${cosStart} + ${Xcable.toFixed(6)} * ${sinStart.toFixed(4)})
                = ${dU_start.toFixed(3)} V
       dU_start% = ${dU_start.toFixed(3)} / ${Un} * 100 = ${dU_start_pct.toFixed(3)} %
       Limit: <= ${maxVdStart} %  [${vdStartOk ? 'OK' : 'FAIL'}]`;
@@ -456,7 +426,7 @@ Installation: ${instLabel}
   window._mscSizLast = {
     Pn, Un, cosN, eta, cosStart, kstart, L, maxVdRun, maxVdStart,
     method, methodName, cableType, instMethod, instLabel, phases, phaseLabel,
-    In, Istart, sinN, sinStart, rho20, alpha, T, rho_run, rho_start, Xkm, vdFactor, InFactor, matLabel,
+    In, Istart, sinN, sinStart, rho, Xkm, vdFactor, InFactor, matLabel,
     res, stepsText,
   };
 }
@@ -522,11 +492,6 @@ async function mscDownloadPdf() {
     ['Starting power factor cos phi_start', String(r.cosStart)],
     ['Cable length L (one-way)',            r.L + ' m'],
     ['Conductor material',                  r.matLabel],
-    ['Cable operating temperature T',       r.T + ' °C (IEC 60364-5-52 §G.52.2)'],
-    ['ρ20',                                 r.rho20.toFixed(5) + ' Ω·mm²/m'],
-    ['α (temp. coefficient)',               r.alpha.toFixed(6)],
-    ['ρ_run (T °C)',                        r.rho_run.toFixed(5) + ' Ω·mm²/m'],
-    ['ρ_start (20 °C)',                     r.rho_start.toFixed(5) + ' Ω·mm²/m'],
     ['Cable type',                          r.cableType === 'single' ? 'Single-core (X = 0.08 Ohm/km)' : 'Multi-core (X = 0.07 Ohm/km)'],
     ['Installation method (IEC 60364-5-52)', r.instLabel],
     ['System',                              r.phases === 'ac3' ? 'Three-phase AC (AC3)' : 'Single-phase AC (AC1)'],
@@ -635,7 +600,7 @@ async function mscDownloadPdf() {
       if (!line.trim()) return;
 
       // Box-drawing separator line → draw an actual PDF rule
-      if (/^[─-╿\-]{5,}/.test(line.trim())) {
+      if (/^[\u2500\u2574\u2501-]{5,}/.test(line.trim())) {
         doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3);
         doc.line(M, y - 1.5, PW - M, y - 1.5);
         return;
@@ -698,28 +663,4 @@ function initMotorCalc() {
     if (s === 2.5) opt.selected = true;
     sel.appendChild(opt);
   });
-
-  // Add cable operating temperature input - insert after the L/Material row
-  try {
-    const lenField = document.getElementById('msc-len');
-    if (lenField) {
-      const row = lenField.closest('.row.c2');
-      if (row && row.parentNode) {
-        const tempField = document.createElement('div');
-        tempField.className = 'fld';
-        tempField.style.marginBottom = '12px';
-        tempField.innerHTML = `
-          <label data-t="mscCondTempLbl">Cable operating temperature</label>
-          <div class="fld-inner">
-            <input type="number" id="msc-temp" value="70" min="0" max="120" step="1">
-            <span class="fld-unit">°C</span>
-          </div>
-          <div class="fld-hint" data-t="mscCondTempHint">IEC 60364-5-52 §G.52.2, ρ = ρ20 × (1 + α×(T−20))</div>
-        `;
-        row.parentNode.insertBefore(tempField, row.nextSibling);
-      }
-    }
-  } catch (e) {
-    console.error('Failed to add temperature field:', e);
-  }
 }
