@@ -64,6 +64,21 @@ function fmtAwgLabel(n) {
   return map[String(n)] ?? 'AWG ' + n;
 }
 
+/* ===== IEC 60890 §7.2 Figure 1 — natural-ventilation multiplier x ===== */
+function natVentMultiplier(Ao_m2, Ae_m2) {
+  if (Ao_m2 <= 0 || Ae_m2 <= 0) return 1;
+  const ratio = Ao_m2 / Ae_m2;
+  // Linear interpolation of IEC 60890 §7.2 Figure 1 (verified points at 0, 1%, 5%, 10%, 20%)
+  const lut = [[0, 1.00], [0.01, 1.07], [0.05, 1.18], [0.10, 1.30], [0.20, 1.48]];
+  for (let i = 1; i < lut.length; i++) {
+    if (ratio < lut[i][0]) {
+      const a = lut[i - 1], b = lut[i];
+      return a[1] + (b[1] - a[1]) * (ratio - a[0]) / (b[0] - a[0]);
+    }
+  }
+  return lut.at(-1)[1];
+}
+
 /* ===== Effective cooling surface per IEC 60890 §4 ===== */
 function calcAe(h_mm, w_mm, d_mm, mounting) {
   const h = h_mm / 1000, b = w_mm / 1000, d = d_mm / 1000;
@@ -419,19 +434,21 @@ function sbCalculate() {
   // Effective cooling surface — IEC 60890 §4
   const Ae = calcAe(h, w, d, mounting);
 
-  // Natural ventilation — IEC 60890 §7: ΔAe = 0.1 × Ao[m²] = opening_cm² × 1e-5
+  // Natural ventilation — IEC 60890 §7.2 Figure 1
   const natOn = document.getElementById('sb-nat-on').checked;
-  const openArea_cm2 = natOn ? (parseFloat(document.getElementById('sb-open-area').value) || 0) : 0;
-  let dAe_nat = 0;
-  if (natOn) dAe_nat = openArea_cm2 * 1e-5;
-  const Ae_total = Ae + dAe_nat;
+  const openTop_cm2 = natOn ? (parseFloat(document.getElementById('sb-open-top').value) || 0) : 0;
+  const openBot_cm2 = natOn ? (parseFloat(document.getElementById('sb-open-bot').value) || 0) : 0;
+  const Ao_m2 = (openTop_cm2 + openBot_cm2) * 1e-4;
+  const natRatio = Ae > 0 ? Ao_m2 / Ae : 0;
+  const natX = natOn ? natVentMultiplier(Ao_m2, Ae) : 1;
+  const Ae_total = Ae * natX;
 
   // Manual heat dissipation mode: user provides total W/K, ΔT = Pt / K_diss
   if (sbHeatMode === 'manual') {
     const K_diss = parseFloat(document.getElementById('sb-manual-dissipation').value) || 0;
     const dT = K_diss > 0 ? Pt / K_diss : 0;
-    _sbShowResults({ P_cables, P_devices, Pt, Ae, dAe_nat, Ae_total, dT, Ta,
-      k: null, K_diss, Q: 0, h_mm: h, w_mm: w, d_mm: d, mounting, natOn, forceOn: false, openArea_cm2 });
+    _sbShowResults({ P_cables, P_devices, Pt, Ae, natX, natRatio, Ao_m2, Ae_total, dT, Ta,
+      k: null, K_diss, Q: 0, h_mm: h, w_mm: w, d_mm: d, mounting, natOn, forceOn: false, openTop_cm2, openBot_cm2 });
     return;
   }
 
@@ -443,8 +460,8 @@ function sbCalculate() {
   const denom = k * Ae_total + CP_AIR * RHO_AIR * Q_m3s;
   const dT = denom > 0 ? Pt / denom : 0;
 
-  _sbShowResults({ P_cables, P_devices, Pt, Ae, dAe_nat, Ae_total, dT, Ta,
-    k, K_diss: null, Q: Q_m3s, h_mm: h, w_mm: w, d_mm: d, mounting, natOn, forceOn, openArea_cm2 });
+  _sbShowResults({ P_cables, P_devices, Pt, Ae, natX, natRatio, Ao_m2, Ae_total, dT, Ta,
+    k, K_diss: null, Q: Q_m3s, h_mm: h, w_mm: w, d_mm: d, mounting, natOn, forceOn, openTop_cm2, openBot_cm2 });
 }
 
 function _sbShowResults(r) {
@@ -478,7 +495,7 @@ function _sbShowResults(r) {
 }
 
 function _sbBuildSteps(r, dT, Ti) {
-  const { P_cables, P_devices, Pt, Ae, dAe_nat, Ae_total, Ta, k, K_diss, Q, h_mm, w_mm, d_mm, mounting, natOn, forceOn, openArea_cm2 } = r;
+  const { P_cables, P_devices, Pt, Ae, natX, natRatio, Ao_m2, Ae_total, Ta, k, K_diss, Q, h_mm, w_mm, d_mm, mounting, natOn, forceOn, openTop_cm2, openBot_cm2 } = r;
   const hm = h_mm / 1000, wm = w_mm / 1000, dm = d_mm / 1000;
   const lines = [];
   let step = 1;
@@ -535,8 +552,13 @@ function _sbBuildSteps(r, dT, Ti) {
   const term2 = mounting === 'wall' ? hm * wm : 2 * hm * wm;
   lines.push(`${step++}. Effective cooling surface:\n   ${fmla}\n   h=${hm}m, b=${wm}m, d=${dm}m\n   Ae = 0.7 × (${(2*hm*dm).toFixed(4)} + ${term2.toFixed(4)} + ${(wm*dm).toFixed(4)}) = ${Ae.toFixed(4)} m²`);
 
-  if (natOn && dAe_nat > 0) {
-    lines.push(`${step++}. Natural ventilation correction — IEC 60890 §7:\n   ΔAe = ${openArea_cm2.toFixed(1)} cm² × 1e-5 = ${dAe_nat.toFixed(6)} m²\n   Ae_total = ${Ae.toFixed(4)} + ${dAe_nat.toFixed(6)} = ${Ae_total.toFixed(6)} m²`);
+  if (natOn) {
+    const Ao_cm2 = openTop_cm2 + openBot_cm2;
+    if (Ao_m2 > 0) {
+      lines.push(`${step++}. Natural ventilation — IEC 60890 §7.2 Figure 1:\n   A_top = ${openTop_cm2.toFixed(1)} cm²,  A_bot = ${openBot_cm2.toFixed(1)} cm²\n   Ao = ${Ao_cm2.toFixed(1)} cm² = ${Ao_m2.toFixed(6)} m²\n   ratio = Ao / Ae = ${Ao_m2.toFixed(6)} / ${Ae.toFixed(4)} = ${natRatio.toFixed(5)}\n   x = ${natX.toFixed(4)}  [IEC 60890 §7.2 Figure 1]\n   Ae_total = Ae × x = ${Ae.toFixed(4)} × ${natX.toFixed(4)} = ${Ae_total.toFixed(4)} m²`);
+    } else {
+      lines.push(`${step++}. Natural ventilation enabled — no openings entered; Ae_total = Ae = ${Ae.toFixed(4)} m²`);
+    }
   }
 
   if (k !== null) {
@@ -758,7 +780,7 @@ async function sbDownloadPdf() {
       ['Ambient temperature Ta', document.getElementById('sb-ta').value + ' °C'],
       ['Convection coeff. k',   kStr],
       ['Effective cooling area Ae', r.Ae_total.toFixed(4) + ' m²'],
-      ['Natural ventilation',   natOn ? `On (${document.getElementById('sb-open-area').value || 0} cm²)` : 'Off'],
+      ['Natural ventilation',   natOn ? `On (top: ${document.getElementById('sb-open-top').value || 0} cm², bot: ${document.getElementById('sb-open-bot').value || 0} cm²)` : 'Off'],
       ['Forced ventilation',    forceOn ? `On (${document.getElementById('sb-airflow').value || 0} m³/h)` : 'Off'],
     ]);
     y += 5;
