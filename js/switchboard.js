@@ -3,7 +3,8 @@
    ===================================================================== */
 
 /* ---- PHYSICAL CONSTANTS (edit here if needed) ---- */
-const RHO_CU = 0.0178;   // Ω·mm²/m  copper resistivity at 20°C — IEC 60228
+const RHO_CU   = MATERIAL.cu.rho20; // Ω·mm²/m — IEC 60228 Annex B
+const ALPHA_CU = MATERIAL.cu.alpha;  // K⁻¹     — IEC 60228 Annex B
 const K_DEFAULT = 5.5;   // W/(m²·K) painted steel, natural convection — IEC 61439 §10.10
 const CP_AIR = 1005;     // J/(kg·K)
 const RHO_AIR = 1.2;     // kg/m³
@@ -145,12 +146,22 @@ function sbRemoveConductorRow(id) {
   sbCalcAllConductors();
 }
 
+function sbCondTempChanged() {
+  document.querySelectorAll('#sb-cond-body tr').forEach(tr => {
+    sbCalcConductorRow(parseInt(tr.dataset.rowId));
+  });
+}
+
 function sbCalcConductorRow(id) {
   const selEl = document.getElementById(`sb-cs-${id}`);
   if (!selEl) return;
   const L = parseFloat(document.getElementById(`sb-cl-${id}`).value) || 0;
   const I = parseFloat(document.getElementById(`sb-ci-${id}`).value) || 0;
   const n = parseInt(document.getElementById(`sb-cn-${id}`).value) || 1;
+
+  // ρ(T) = ρ20 × (1 + α × (T − 20))  — IEC 60228 Annex B / IEC 61439-1 §10.10
+  const T_c = parseFloat(document.getElementById('sb-cond-temp')?.value) ?? 70;
+  const rho_T = RHO_CU * (1 + ALPHA_CU * (T_c - 20));
 
   let A_mm2;
   if (sbConductorMode === 'awg') {
@@ -162,8 +173,8 @@ function sbCalcConductorRow(id) {
     A_mm2 = parseFloat(selEl.value) || 0;
   }
 
-  // P = I² × (ρ/A) × L × n_conductors
-  const P = A_mm2 > 0 ? I * I * (RHO_CU / A_mm2) * L * n : 0;
+  // P = I² × ρ(T) / A × L × n
+  const P = A_mm2 > 0 ? I * I * (rho_T / A_mm2) * L * n : 0;
   document.getElementById(`sb-cp-${id}`).textContent = P.toFixed(2) + ' W';
   sbCalcAllConductors();
 }
@@ -476,6 +487,9 @@ function _sbBuildSteps(r, dT, Ti) {
   let step = 1;
 
   // Per-conductor calculations
+  const T_c = parseFloat(document.getElementById('sb-cond-temp')?.value) ?? 70;
+  const rho_T = RHO_CU * (1 + ALPHA_CU * (T_c - 20));
+
   document.querySelectorAll('#sb-cond-body tr').forEach(tr => {
     const id = tr.dataset.rowId;
     const selEl = document.getElementById(`sb-cs-${id}`);
@@ -494,9 +508,9 @@ function _sbBuildSteps(r, dT, Ti) {
       A_mm2 = parseFloat(selEl.value) || 0;
       sizeLabel = A_mm2 + ' mm²';
     }
-    const r_m = A_mm2 > 0 ? RHO_CU / A_mm2 : 0;
+    const r_m = A_mm2 > 0 ? rho_T / A_mm2 : 0;
     const P = A_mm2 > 0 ? I * I * r_m * L * n : 0;
-    lines.push(`${step++}. Conductor ${sizeLabel}, L=${L}m, I=${I}A, n=${n}:\n   r = ρ/A = ${RHO_CU}/${A_mm2} = ${r_m.toFixed(5)} Ω/m\n   P = I² × r × L × n = ${I}² × ${r_m.toFixed(5)} × ${L} × ${n} = ${P.toFixed(3)} W`);
+    lines.push(`${step++}. Conductor ${sizeLabel}, L=${L}m, I=${I}A, n=${n}, T=${T_c}°C:\n   ρ(${T_c}°C) = ${RHO_CU} × (1 + ${ALPHA_CU} × (${T_c}−20)) = ${rho_T.toFixed(5)} Ω·mm²/m  [IEC 60228 Annex B]\n   r = ρ(T)/A = ${rho_T.toFixed(5)}/${A_mm2} = ${r_m.toFixed(5)} Ω/m\n   P = I² × r × L × n = ${I}² × ${r_m.toFixed(5)} × ${L} × ${n} = ${P.toFixed(3)} W`);
   });
 
   lines.push(`${step++}. Total conductor losses:\n   P_cables = ${P_cables.toFixed(2)} W`);

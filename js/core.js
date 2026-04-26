@@ -2,6 +2,12 @@
 const RHO20 = 1.724e-8;
 const ALPHA = 0.00393;
 
+// IEC 60228 Annex B — ρ(T) = ρ₂₀·(1 + α·(T−20)); k_adi per IEC 60364-5-54
+const MATERIAL = {
+  cu: { rho20: 0.017241, alpha: 0.00393, k_adi: 115 }, // 1/58 Ω·mm²/m
+  al: { rho20: 0.028264, alpha: 0.00403, k_adi: 76  }, // 1/35.4 Ω·mm²/m
+};
+
 // Heat dissipation presets (W/m²K)
 const H_PRESETS = { free: { h: 14 }, grouped: { h: 10 }, conduit: { h: 7 }, custom: { h: null } };
 

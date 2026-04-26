@@ -98,7 +98,7 @@ function mscCalcVdOnly() {
     return;
   }
 
-  const rho = mscMaterial === 'cu' ? 0.0175 : 0.028;
+  const rho = MATERIAL[mscMaterial].rho20 * (1 + MATERIAL[mscMaterial].alpha * (70 - 20));
 
   const In     = (Pn * 1000) / (Math.sqrt(3) * Un * cosN * eta);
   const Istart = kstart * In;
@@ -157,7 +157,7 @@ function mscCalcVdOnly() {
 
   const methodSel  = document.getElementById('msc-method');
   const methodName = methodSel.options[methodSel.selectedIndex].text;
-  const matLabel   = mscMaterial === 'cu' ? 'Cu (ρ = 0.0175 Ω·mm²/m)' : 'Al (ρ = 0.028 Ω·mm²/m)';
+  const matLabel   = (mscMaterial === 'cu' ? 'Cu' : 'Al') + ` (ρ(70 °C) = ${rho.toFixed(5)} Ω·mm²/m)`;
 
   document.getElementById('msc-steps').textContent =
 `Method: ${methodName}  |  Material: ${matLabel}
@@ -225,7 +225,7 @@ function mscCalcFullSizing() {
     return;
   }
 
-  const rho      = mscMaterial === 'cu' ? 0.0175 : 0.028;
+  const rho      = MATERIAL[mscMaterial].rho20 * (1 + MATERIAL[mscMaterial].alpha * (70 - 20));
   const ampTable = mscMaterial === 'cu' ? IEC_AMP_CU : IEC_AMP_AL;
   const Xkm      = cableType === 'single' ? 0.08 : 0.07;  // Ω/km
   const InFactor = phases === 'ac3' ? Math.sqrt(3) : 1;

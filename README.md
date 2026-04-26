@@ -63,7 +63,7 @@ Calculates fill percentage for cable trays and conduits with:
 - Copper resistivity at 20°C: ρ₂₀ = 1.724 × 10⁻⁸ Ω·m (IEC 60228)
 - Temperature coefficient for copper: α = 0.00393 °C⁻¹
 - Copper resistivity (alternate): 0.017241 Ω·mm²/m
-- Aluminum resistivity at 20°C: ρ₂₀ = 0.028571 Ω·mm²/m
+- Aluminum resistivity at 20°C: ρ₂₀ = 0.028264 Ω·mm²/m
 - Temperature coefficient for aluminum: α = 0.00403 °C⁻¹
 
 #### Resistivity Temperature Correction
@@ -388,10 +388,16 @@ This calculator implements calculations according to the following international
 - **IEC 60287**: Electric cables — Calculation of the current rating (skin effect)
 
 ### Material Properties
-All calculations use standard IEC values:
-- **Copper**: ρ₂₀ = 1.7241 × 10⁻⁸ Ω·m = 0.017241 Ω·mm²/m at 20°C
-- **Aluminum**: ρ₂₀ = 2.8571 × 10⁻⁸ Ω·m = 0.028571 Ω·mm²/m at 20°C
-- Temperature coefficients: Cu = 0.00393, Al = 0.00403
+All calculations use standard IEC values (IEC 60228 Annex B):
+
+| Property | Copper | Aluminium |
+|---|---|---|
+| ρ₂₀ (Ω·mm²/m) | 0.017241 | 0.028264 |
+| α (K⁻¹) | 0.00393 | 0.00403 |
+| k_adi (A·s½/mm²) | 115 | 76 |
+
+k_adi = adiabatic short-circuit withstand factor per IEC 60364-5-54.  
+ρ(T) correction: ρ_T = ρ₂₀ × (1 + α × (T − 20))
 
 ---
 
