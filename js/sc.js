@@ -30,6 +30,12 @@ const SC_CURVES = {
 
 const SC_FUSE_FACTOR = 1.6; // I₂ conventional fusing current (IEC 60269-2) — overload info only
 
+// IEC 60364-4-43 Table 43A — k factor for cable thermal withstand I²t ≤ (k·S)²
+const SC_THW_K = {
+  cu: { pvc: 115, xlpe: 143 },
+  al: { pvc: 76,  xlpe: 94  },
+};
+
 // gG fuse disconnection-current multipliers k_a = I_a / In (IEC 60269-2 Annex B / IEC 60364-4-43 Table A)
 const SC_FUSE_KA = {
   '5':   { lo: 4.5,  hi: 6.0  }, // ≤5 s — distribution circuits, IEC 60364-4-41 §411.3.2
@@ -762,6 +768,47 @@ function scCalculate() {
     mlBox.className   = 'sc-maxlen-box sc-maxlen-warn';
   }
 
+  // ─── IEC 60364-4-43 §434.5 Cable Thermal Withstand ──────────────────────
+  const insulType = (document.getElementById('sc-insul')?.value || 'pvc');
+  const It2_input = parseFloat(document.getElementById('sc-it2')?.value) || 30000;
+  const k_thw     = (SC_THW_K[scMaterial] || SC_THW_K.cu)[insulType] || 115;
+  const kS2       = Math.pow(k_thw * S, 2);   // (k·S)²  A²·s
+
+  let thw_dt;
+  if (isFuse) {
+    const dt_sel = document.getElementById('sc-disc-time')?.value || '0.4';
+    thw_dt = '≤ ' + dt_sel + ' s (gG fuse)';
+  } else if (tripState === 2) {
+    thw_dt = devType === 'mccb' ? '≤ 30 ms (instantaneous)' : '≤ 10 ms (instantaneous)';
+  } else {
+    thw_dt = '— (trip not guaranteed)';
+  }
+
+  // 0 = FAIL, 1 = WARN (80–100 % of limit), 2 = PASS
+  const thw_ratio  = It2_input / kS2;
+  const thw_status = thw_ratio >= 1 ? 0 : thw_ratio >= 0.8 ? 1 : 2;
+
+  const thwCol  = document.getElementById('sc-thw-col');
+  const thwCard = document.getElementById('sc-thw-card');
+  const thwBadge = document.getElementById('sc-thw-badge');
+  if (thwCol && thwCard && thwBadge) {
+    thwCol.style.display = '';
+    document.getElementById('sc-thw-dt').textContent      = thw_dt;
+    document.getElementById('sc-thw-it2-val').textContent = It2_input.toLocaleString('cs-CZ') + ' A²·s';
+    document.getElementById('sc-thw-ks2').textContent     =
+      Math.round(kS2).toLocaleString('cs-CZ') + ' A²·s  (k=' + k_thw + ', S=' + S + ' mm²)';
+    if (thw_status === 2) {
+      thwCard.className  = 'sc-thw-card sc-thw-pass';
+      thwBadge.textContent = '✅ PASS — margin ' + ((1 - thw_ratio) * 100).toFixed(0) + '%';
+    } else if (thw_status === 1) {
+      thwCard.className  = 'sc-thw-card sc-thw-warn';
+      thwBadge.textContent = '⚠ WARN — ' + (thw_ratio * 100).toFixed(0) + '% of limit';
+    } else {
+      thwCard.className  = 'sc-thw-card sc-thw-fail';
+      thwBadge.textContent = '❌ FAIL — I²t > k²·S²';
+    }
+  }
+
   // ─── Assumptions display ─────────────────────────────────────────────────
   const sysLabel = scVoltPreset === 'ac1' ? '1-phase 230 V' : scVoltPreset === 'ac3' ? '3-phase 400 V' : 'Custom';
   const voltModeStr = sysLabel + '  →  U0 = ' + engRound(U0, 4) + ' V  ·  U_LL = ' + engRound(U_LL, 4) + ' V';
@@ -876,6 +923,7 @@ function scCalculate() {
     Ik_max_kA, tripState, tripLo, tripHi, exceedsIcu, approachingIcu, L_max,
     curveSel: isFuse ? 'gG' : curveSel, curveLabel,
     voltModeStr,
+    thw: { k: k_thw, kS2, It2: It2_input, status: thw_status, dt: thw_dt, insulType },
   };
 
   // Selectivity analysis (must run after _scLastResult is set)
@@ -1002,6 +1050,43 @@ async function scDownloadPdf() {
       doc.text(pdfSafe(tripDetailStr), PW / 2, y + 12.5, { align: 'center' });
       y += 16 + 3;
 
+      // ── Cable Thermal Withstand (IEC 60364-4-43 §434.5) ──
+      if (r.thw) {
+        const tw = r.thw;
+        let twcol, twbg, twLabel;
+        if      (tw.status === 2) { twcol = [0, 160, 80];  twbg = [232, 252, 240]; twLabel = 'PASS'; }
+        else if (tw.status === 1) { twcol = [180, 120, 0]; twbg = [255, 245, 220]; twLabel = 'WARN'; }
+        else                      { twcol = [200, 40, 40]; twbg = [252, 232, 232]; twLabel = 'FAIL'; }
+
+        const twH = 34;
+        doc.setFillColor(245, 247, 250); doc.setDrawColor(200, 210, 225); doc.setLineWidth(0.2);
+        doc.rect(M, y, CW, twH, 'FD');
+
+        doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(100, 100, 100);
+        doc.text('CABLE THERMAL WITHSTAND  (IEC 60364-4-43 §434.5)', M + 3, y + 5.5);
+
+        const twRows = [
+          ['Δt clearing:', tw.dt],
+          ['I²t let-through:', tw.It2.toLocaleString() + ' A²·s'],
+          ['k²·S² limit:', Math.round(tw.kS2).toLocaleString() + ' A²·s  (k=' + tw.k + ', S=' + r.S + ' mm²)'],
+        ];
+        let ry = y + 11;
+        twRows.forEach(([lbl, val]) => {
+          doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
+          doc.text(pdfSafe(lbl), M + 3, ry);
+          doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
+          doc.text(pdfSafe(String(val)), M + CW - 35, ry, { align: 'right' });
+          ry += 5.5;
+        });
+
+        doc.setFillColor(...twbg); doc.setDrawColor(...twcol); doc.setLineWidth(0.4);
+        doc.rect(M + CW - 32, y + 1, 31, 12, 'FD');
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...twcol);
+        doc.text(pdfSafe(twLabel), M + CW - 16.5, y + 8.5, { align: 'center' });
+
+        y += twH + 3;
+      }
+
       // ── Icu warning (if exceeded) ──
       if (r.exceedsIcu) {
         doc.setFillColor(252, 232, 232); doc.setDrawColor(200, 40, 40); doc.setLineWidth(0.5);
@@ -1055,11 +1140,14 @@ async function scDownloadPdf() {
       ['Cable length L', r.L + ' m'],
     ];
     if (r.Re > 0) inputRows.push(['Earth resistance Re (TT)', r.Re + ' Ohm']);
+    const insulLbl = { pvc: 'PVC 70°C', xlpe: 'XLPE/EPR 90°C' };
     inputRows.push(
       ['Protective device', r.devType.toUpperCase()],
       ['Rated current In', r.In + ' A'],
       ['Trip characteristic', pdfSafe(r.curveLabel)],
       ['Breaking capacity Icu', r.Icu_kA + ' kA'],
+      ['Cable insulation (§434.5)', insulLbl[r.thw?.insulType] || r.thw?.insulType || '—'],
+      ['I²t let-through (§434.5)', r.thw ? r.thw.It2.toLocaleString() + ' A²·s' : '—'],
     );
 
     // ── PAGE 1: Inputs + Results ──

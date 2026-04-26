@@ -605,6 +605,23 @@ option{background:var(--surf-2);color:var(--on-surf)}
 .sc-ik-range-sep{font-size:10px;color:var(--on-surf-var);opacity:.6}
 .sc-trip-partial{background:rgba(200,140,0,.12);border:1px solid rgba(200,140,0,.4)}
 .sc-trip-partial .sc-trip-status{color:#c88c00}
+/* ── Cable Thermal Withstand card (IEC 60364-4-43 §434.5) ───────────────── */
+.sc-trip-pair{display:flex;gap:10px;align-items:stretch}
+.sc-trip-col{flex:1;min-width:0;display:flex;flex-direction:column}
+.sc-trip-col .sc-trip-box{margin-bottom:0;flex:1}
+.sc-thw-card{border-radius:var(--r-lg);padding:14px 18px;flex:1;display:flex;flex-direction:column}
+.sc-thw-pass{background:rgba(0,200,100,.1);border:1.5px solid rgba(0,200,100,.3)}
+.sc-thw-warn{background:rgba(200,140,0,.12);border:1px solid rgba(200,140,0,.4)}
+.sc-thw-fail{background:rgba(255,100,100,.1);border:1.5px solid rgba(255,100,100,.35)}
+.sc-thw-title{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;opacity:.7;margin-bottom:9px;color:var(--on-surf-var)}
+.sc-thw-rows{display:flex;flex-direction:column;gap:5px;flex:1}
+.sc-thw-item{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.sc-thw-lbl{font-size:11px;color:var(--on-surf-var);white-space:nowrap;flex-shrink:0}
+.sc-thw-val{font-size:11.5px;font-weight:700;font-family:'Roboto Mono',monospace;color:var(--on-surf);text-align:right}
+.sc-thw-badge{font-size:13px;font-weight:700;text-align:center;padding:7px 0 2px;margin-top:8px}
+.sc-thw-pass .sc-thw-badge{color:#00c864}
+.sc-thw-warn .sc-thw-badge{color:#c88c00}
+.sc-thw-fail .sc-thw-badge{color:#ff6464}
 .sc-icu-warn{background:rgba(200,100,0,.12);border:1px solid rgba(200,100,0,.4);color:#b86000;border-radius:6px;padding:8px 12px;font-size:12.5px;margin-top:6px}
 .sc-assumptions{background:var(--surf-2);border:1px solid var(--surf-3);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--on-surf-var);font-family:monospace;white-space:pre-wrap;line-height:1.6;margin:0}
 
@@ -655,6 +672,7 @@ option{background:var(--surf-2);color:var(--on-surf)}
   .sb-enc-tabs{width:100%}
   .sc-imp-grid{grid-template-columns:1fr 1fr 1fr 1fr}
   .sc-ik-grid{grid-template-columns:1fr}
+  .sc-trip-pair{flex-direction:column}
   .msc-siz-table td,.msc-siz-table th{padding:7px 8px;font-size:11px}
 }
 
