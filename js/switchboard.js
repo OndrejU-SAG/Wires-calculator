@@ -283,7 +283,6 @@ function sbSetEncMode(mode) {
   ['sb-enc-h', 'sb-enc-w', 'sb-enc-d'].forEach(id => {
     document.getElementById(id).disabled = isTs8;
   });
-  document.getElementById('sb-mounting').disabled = isTs8;
   if (isTs8) sbApplyTs8();
   sbUpdateAe();
 }
@@ -295,8 +294,6 @@ function sbApplyTs8() {
   document.getElementById('sb-enc-h').value = h;
   document.getElementById('sb-enc-w').value = w;
   document.getElementById('sb-enc-d').value = d;
-  // TS8 is free-standing only
-  document.getElementById('sb-mounting').value = 'free';
   sbUpdateAe();
 }
 
