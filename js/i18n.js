@@ -380,6 +380,9 @@ const T = {
     ttIecMaxVd: 'Maximaler Spannungsfall vom Verteiler bis zum Verbraucher.',
     ttIecMethod: 'Klicken Sie auf das Symbol, um die IEC 60364-5-52 Verlegeartübersicht zu öffnen.',
     ttIecGrouping: 'Anzahl benachbarter, gleichzeitig belasteter Stromkreise im Bündel/Rohr.',
+    iecCosPhi: 'cos φ — Leistungsfaktor',
+    iecCosPhiHint: '0–1 · nur 3-Phasen · 1,0 ohmsch · 0,85 Motor · 0,95 Beleuchtung',
+    ttIecCosPhi: 'Leistungsfaktor (cos der Phasenverschiebung U/I). Wird nur in der 3-Phasen-Spannungsfall-Formel ΔU = √3·I·(R·cosφ + X·sinφ)·L verwendet — keine Strom-Derating.',
   },
   cze: {
     appTitle: 'Elektrická kalkulačka',
@@ -762,6 +765,9 @@ const T = {
     ttIecMaxVd: 'Maximální úbytek napětí od rozvaděče ke spotřebiči.',
     ttIecMethod: 'Klikněte na ikonu pro přehled způsobů uložení dle IEC 60364-5-52.',
     ttIecGrouping: 'Počet sousedních současně zatížených obvodů ve svazku / trubce.',
+    iecCosPhi: 'cos φ — účiník',
+    iecCosPhiHint: '0–1 · jen 3-fáze · 1.0 odpor. zátěž · 0.85 motor · 0.95 osvětlení',
+    ttIecCosPhi: 'Účiník (cosinus fázového posunu U/I). Používá se pouze ve vzorci 3-fázového úbytku napětí ΔU = √3·I·(R·cosφ + X·sinφ)·L — neovlivňuje proud ani zatížitelnost vodiče.',
   },
   eng: {
     appTitle: 'Electrical Calculator',
@@ -1144,6 +1150,9 @@ const T = {
     ttIecMaxVd: 'Max voltage drop from distribution to load.',
     ttIecMethod: 'Click to open the IEC 60364-5-52 reference method overview.',
     ttIecGrouping: 'Number of adjacent simultaneously-loaded circuits in the bundle/conduit.',
+    iecCosPhi: 'cos φ — power factor',
+    iecCosPhiHint: '0–1 · only 3-phase · 1.0 resistive · 0.85 motor · 0.95 lighting',
+    ttIecCosPhi: 'Power factor (cosine of U/I phase shift). Used only in the 3-phase voltage-drop formula ΔU = √3·I·(R·cosφ + X·sinφ)·L — does NOT derate the current.',
   }
 };
 
