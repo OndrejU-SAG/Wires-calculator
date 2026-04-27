@@ -49,6 +49,165 @@
 
 <!-- TAB 0 -->
 <div id="pane0" class="tab-pane active"><div class="content">
+
+  <!-- ─── SUB-TAB BAR (IEC vs. Physical) ────────────────────────────────── -->
+  <div class="sc-subtab-bar" id="ws-subtab-bar">
+    <button class="sc-subtab active" id="ws-sub-iec" onclick="wsSwitchSub('iec')" data-t="wsSubIec">⚡ IEC 60364</button>
+    <button class="sc-subtab" id="ws-sub-phys" onclick="wsSwitchSub('phys')" data-t="wsSubPhys">🔬 Fyzikální / analytický</button>
+  </div>
+
+  <!-- ─── SUB-TAB 1: IEC STYLE (DEFAULT) ────────────────────────────────── -->
+  <div id="ws-iec-panel">
+    <div class="card">
+      <div class="card-hdr" data-t="iecCircuitHdr">⚡ Parametry obvodu</div>
+      <div class="fld" style="margin-bottom:10px"><label data-t="iecSystem">Typ soustavy</label>
+        <div class="seg-group" style="margin-bottom:0">
+          <button class="seg-btn" id="iec-sys-dc"  onclick="iecSetSystem(this,'dc')">DC</button>
+          <button class="seg-btn active" id="iec-sys-1ph" onclick="iecSetSystem(this,'1ph')" data-t="sysAc1">AC Jednofázové</button>
+          <button class="seg-btn" id="iec-sys-3ph" onclick="iecSetSystem(this,'3ph')" data-t="sysAc3">AC Třífázové</button>
+        </div>
+      </div>
+      <div class="row c2">
+        <div class="fld"><label data-t="iecVoltage">Napětí U</label>
+          <div class="fld-inner"><input type="number" id="iec-voltage" value="230" min="0"><span class="fld-unit">V</span></div></div>
+        <div class="fld"><label data-t="iecCurrent">Návrhový proud Ib</label>
+          <div class="fld-inner"><input type="number" id="iec-current" value="32" min="0"><span class="fld-unit">A</span></div></div>
+      </div>
+      <div class="row c2">
+        <div class="fld"><label data-t="iecLength">Délka L (jednosměrná)</label>
+          <div class="fld-inner"><input type="number" id="iec-length" value="50" min="0"><span class="fld-unit">m</span></div></div>
+        <div class="fld" id="iec-cosphi-fld"><label>cos φ</label>
+          <div class="fld-inner"><input type="number" id="iec-cosphi" value="0.85" step="0.01" min="0" max="1"><span class="fld-unit">—</span></div></div>
+      </div>
+      <div class="fld"><label><span data-t="iecMaxVd">Povolený úbytek napětí</span> <span class="tt" data-tt="ttIecMaxVd" tabindex="0">ⓘ</span></label>
+        <div class="fld-inner"><input type="number" id="iec-max-vd" value="3" step="0.1" min="0.1" max="100"><span class="fld-unit">%</span></div>
+        <div class="fld-hint" data-t="iecVdHintDefault">IEC 60364-5-52 §G.52.2 — typicky 3 % osvětlení / 5 % ostatní</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr" data-t="iecInstHdr">📋 IEC 60364-5-52 — způsob uložení</div>
+      <div class="row c2">
+        <div class="fld"><label data-t="iecMaterial">Materiál vodiče</label>
+          <div class="seg-group" style="margin-bottom:0">
+            <button class="seg-btn active" id="iec-mat-cu" onclick="iecSetMaterial(this,'cu')">Cu</button>
+            <button class="seg-btn"        id="iec-mat-al" onclick="iecSetMaterial(this,'al')">Al</button>
+          </div>
+        </div>
+        <div class="fld"><label data-t="iecInsulation">Izolace</label>
+          <div class="seg-group" style="margin-bottom:0">
+            <button class="seg-btn active" id="iec-ins-pvc70"  onclick="iecSetInsul(this,'pvc70')"  data-t="iecInsPvc">PVC 70°C</button>
+            <button class="seg-btn"        id="iec-ins-xlpe90" onclick="iecSetInsul(this,'xlpe90')" data-t="iecInsXlpe">XLPE 90°C</button>
+          </div>
+        </div>
+      </div>
+      <div class="fld" style="margin-top:8px">
+        <label>
+          <span data-t="iecMethod">Způsob uložení (Reference Method)</span>
+          <a class="tt" href="https://ondreu.github.io/IEC-60364-5-52-Installation-Methods/" target="_blank" rel="noopener" data-tt="ttIecMethod" tabindex="0">?</a>
+        </label>
+        <div class="fld-inner">
+          <select id="iec-method" style="padding-left:9px">
+            <optgroup label="A — Insulated wall">
+              <option value="A1">A1 — Conductors in conduit in insulated wall</option>
+              <option value="A2">A2 — Multicore cable in conduit in insulated wall</option>
+            </optgroup>
+            <optgroup label="B — Wooden / masonry wall">
+              <option value="B1" selected>B1 — Conductors in conduit on wall</option>
+              <option value="B2">B2 — Multicore cable in conduit on wall</option>
+            </optgroup>
+            <optgroup label="C / E / F / G — Surface / Tray">
+              <option value="C">C — Cable on wall or unperforated tray</option>
+              <option value="E">E — Multicore cable on perforated tray / ladder (free air)</option>
+              <option value="F">F — Single-core touching, perforated tray (free air)</option>
+              <option value="G">G — Single-core spaced, perforated tray (free air)</option>
+            </optgroup>
+            <optgroup label="D — Buried">
+              <option value="D1">D1 — Multicore cable, direct burial / buried conduit</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="fld-hint" id="iec-method-hint" data-t="iecMethodHintDefault">B1 — vodiče v trubce na zdi</div>
+      </div>
+      <div class="row c3" style="margin-top:8px">
+        <div class="fld"><label data-t="iecConductors">Zatížené vodiče</label>
+          <div class="fld-inner"><select id="iec-conductors" style="padding-left:9px">
+            <option value="2">2 (L + N)</option>
+            <option value="3" selected>3 (L1+L2+L3 / L+N+PE)</option>
+          </select></div></div>
+        <div class="fld"><label data-t="iecTamb">Teplota okolí Ta</label>
+          <div class="fld-inner"><select id="iec-tamb" style="padding-left:9px">
+            <option value="10">10 °C</option>
+            <option value="15">15 °C</option>
+            <option value="20">20 °C</option>
+            <option value="25">25 °C</option>
+            <option value="30" selected>30 °C (ref)</option>
+            <option value="35">35 °C</option>
+            <option value="40">40 °C</option>
+            <option value="45">45 °C</option>
+            <option value="50">50 °C</option>
+            <option value="55">55 °C</option>
+            <option value="60">60 °C</option>
+          </select></div></div>
+        <div class="fld"><label><span data-t="iecGrouping">Sdružení obvodů</span> <span class="tt" data-tt="ttIecGrouping" tabindex="0">ⓘ</span></label>
+          <div class="fld-inner"><select id="iec-grouping" style="padding-left:9px">
+            <option value="1" selected>1 (žádné)</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="12">12</option>
+            <option value="16">16</option>
+            <option value="20">20+</option>
+          </select></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr" data-t="iecPeHdr">🛡️ Ochranný vodič (PE)</div>
+      <div class="fld"><label data-t="iecPeMethod">Metoda dimenzování PE</label>
+        <div class="seg-group" style="margin-bottom:0">
+          <button class="seg-btn active" id="iec-pe-simp" onclick="iecSetPeMethod(this,'simplified')" data-t="iecPeSimp">Zjednodušená (Tab. 54.2)</button>
+          <button class="seg-btn"        id="iec-pe-adi"  onclick="iecSetPeMethod(this,'adiabatic')"  data-t="iecPeAdi">Adiabatická (§543.1.2)</button>
+        </div>
+      </div>
+      <div id="iec-pe-adi-row" style="display:none;margin-top:10px">
+        <div class="row c2">
+          <div class="fld"><label data-t="iecIk">Poruchový proud Ik</label>
+            <div class="fld-inner"><input type="number" id="iec-ik" value="1.5" step="0.1" min="0.001"><span class="fld-unit">kA</span></div></div>
+          <div class="fld"><label data-t="iecTdis">Doba odpojení t</label>
+            <div class="fld-inner"><input type="number" id="iec-tdis" value="0.4" step="0.01" min="0.001"><span class="fld-unit">s</span></div></div>
+        </div>
+        <button type="button" id="iec-fetch-sc" class="seg-btn" style="border-radius:var(--r-md);border:1.5px solid var(--out);margin-top:6px" data-t="iecFetchSc">↻ Načíst z modulu Zkratový proud</button>
+      </div>
+    </div>
+
+    <div id="iec-err" class="err-box"></div>
+    <button type="button" id="iec-calculate" class="btn-primary" data-t="iecCalcBtn">⚡ Vypočítat průřez (IEC)</button>
+
+    <div id="iec-results" class="res-card" style="display:none">
+      <div class="res-lbl" data-t="iecResTitle">Výsledky — IEC dimenzování</div>
+      <div id="iec-results-body"></div>
+    </div>
+
+    <div class="wi-card" id="iec-steps-card" style="display:none">
+      <div class="wi-hdr">
+        <div class="wi-title" data-t="iecStepsTitle">📐 Postup výpočtu (krok za krokem)</div>
+      </div>
+      <pre class="sb-steps" id="iec-steps"></pre>
+      <div class="fld" style="margin:6px 0 6px"><label data-t="pdfEngineer">Engineer</label>
+        <div class="fld-inner"><input type="text" id="iec-engineer" placeholder="Name…"></div>
+      </div>
+      <button type="button" class="btn-primary" id="iec-pdf-btn" style="margin-top:4px" data-t="iecPdfBtn">⬇ Stáhnout PDF</button>
+    </div>
+  </div>
+
+  <!-- ─── SUB-TAB 2: PHYSICAL / ANALYTICAL (existing) ───────────────────── -->
+  <div id="ws-phys-panel" style="display:none">
   <div class="card">
     <div class="card-hdr" data-t="sysType">⚙ Typ systému</div>
     <div class="seg-group">
@@ -199,6 +358,7 @@
     </div>
     <button class="btn-primary" id="calc-pdf-btn" onclick="calcDownloadPdf()" style="margin-top:4px" data-t="scPdfBtn">⬇ Download PDF</button>
   </div>
+  </div><!-- /#ws-phys-panel -->
 </div></div>
 
 <!-- TAB 1 -->
@@ -1657,6 +1817,7 @@
 <script src="js/core.js"></script>
 <script src="js/pdf.js"></script>
 <script src="js/calculator.js"></script>
+<script src="js/iec-calculator.js"></script>
 <script src="js/converter.js"></script>
 <script src="js/switchboard.js"></script>
 <script src="js/sc.js"></script>

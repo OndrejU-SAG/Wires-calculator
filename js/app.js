@@ -28,6 +28,19 @@ function switchTab(n) {
   document.querySelectorAll('.tab-pane').forEach((p, i) => p.classList.toggle('active', i === n));
 }
 
+function wsSwitchSub(which) {
+  const iecBtn  = document.getElementById('ws-sub-iec');
+  const physBtn = document.getElementById('ws-sub-phys');
+  const iecPan  = document.getElementById('ws-iec-panel');
+  const physPan = document.getElementById('ws-phys-panel');
+  if (!iecBtn || !iecPan) return;
+  const isIec = which === 'iec';
+  iecBtn.classList.toggle('active', isIec);
+  physBtn.classList.toggle('active', !isIec);
+  iecPan.style.display  = isIec ? '' : 'none';
+  physPan.style.display = isIec ? 'none' : '';
+}
+
 function showToast(msg, ms = 2000) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.style.opacity = '1';
@@ -58,7 +71,8 @@ function resetToDefaults() {
   }
 
   switch (tabIdx) {
-    case 0:
+    case 0: {
+      // Physical / analytical sub-tab
       clickBtn('[onclick*="setSystem"][onclick*="\'dc\'"]');
       document.getElementById('current').value = 16;
       document.getElementById('ambient').value = 30;
@@ -74,7 +88,25 @@ function resetToDefaults() {
       onTempPresetChange();
       onHChange();
       liveWarn();
+      // IEC sub-tab defaults
+      clickBtn('#iec-sys-1ph');
+      clickBtn('#iec-mat-cu');
+      clickBtn('#iec-ins-pvc70');
+      clickBtn('#iec-pe-simp');
+      document.getElementById('iec-voltage').value = 230;
+      document.getElementById('iec-current').value = 32;
+      document.getElementById('iec-length').value = 50;
+      document.getElementById('iec-cosphi').value = 0.85;
+      document.getElementById('iec-max-vd').value = 3;
+      document.getElementById('iec-method').value = 'B1';
+      document.getElementById('iec-conductors').value = '3';
+      document.getElementById('iec-tamb').value = '30';
+      document.getElementById('iec-grouping').value = '1';
+      document.getElementById('iec-ik').value = 1.5;
+      document.getElementById('iec-tdis').value = 0.4;
+      document.getElementById('iec-method').dispatchEvent(new Event('change'));
       break;
+    }
 
     case 1:
       if (convDir !== 'mm2ToAwg') swapConv();

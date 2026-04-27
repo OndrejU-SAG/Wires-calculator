@@ -111,7 +111,7 @@ function pdfMakeFooter(doc, { PW, PH, M, pageNum, totalPages, engineer, standard
 /* ─── Engineer name persistence ─────────────────────────────────────────── */
 function _pdfEngineerInit() {
   const saved = localStorage.getItem(_PDF_ENGINEER_KEY) || '';
-  const ids = ['sb-engineer', 'sc-engineer', 'dc-engineer', 'tray-engineer', 'calc-engineer', 'msc-engineer'];
+  const ids = ['sb-engineer', 'sc-engineer', 'dc-engineer', 'tray-engineer', 'calc-engineer', 'msc-engineer', 'iec-engineer'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
