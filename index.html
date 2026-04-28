@@ -115,6 +115,8 @@
             <option value="lszh90" data-t="iecInsLszh">LSZH / HFFR 90 °C</option>
             <option value="epr90" data-t="iecInsEpr">EPR 90 °C</option>
             <option value="rubber60" data-t="iecInsRubber">Guma 60 °C (≈ PVC × 0.85)</option>
+            <option value="sil150" data-t="iecInsSil150">Silikon 150 °C</option>
+            <option value="ptfe200" data-t="iecInsPtfe200">PTFE / Teflon 200 °C</option>
           </select></div>
           <div class="fld-hint" id="iec-ins-hint" data-t="iecInsHintDefault">PVC 70 °C — standard pro pevné instalace (k = 115 Cu / 76 Al)</div>
         </div>
@@ -1817,11 +1819,11 @@
     <div class="note-bar" id="tray-rule-info" style="margin-top:8px"></div>
 
     <!-- Warnings -->
-    <div class="warn-chip" id="tray-stack-warn" data-t="tray_warnStack" style="display:none;margin-top:8px">⚠ Estimated stack height exceeds tray height</div>
+    <div class="warn-chip" id="tray-stack-warn" style="display:none;margin-top:8px">⚠ Estimated stack height exceeds tray height</div>
     <div class="warn-chip" id="tray-mixed-warn" data-t="tray_warnMixed" style="display:none;margin-top:8px">⚠ Mixed cable types — stricter 40% rule applies</div>
-    <div class="warn-chip" id="tray-mixed-separation-warn" style="display:none;margin-top:8px">⚠ Per IEC 60364-5-52, power and control/signal cables should be physically separated.</div>
-    <div class="warn-chip" id="tray-iec-tray-disclaimer" style="display:none;margin-top:8px">ℹ IEC 60364-5-52 Annex B fill limits are defined for conduit — applying to cable trays is conservative engineering practice.</div>
-    <div class="warn-chip" id="tray-iec-12cable-note" style="display:none;margin-top:8px">ℹ IEC 60364-5-52 Annex B does not separate 1/2-cable cases; 40 % conservative limit applied.</div>
+    <div class="warn-chip" id="tray-mixed-separation-warn" data-t="tray_warnMixedSeparation" style="display:none;margin-top:8px">⚠ Per IEC 60364-5-52, power and control/signal cables should be physically separated.</div>
+    <div class="warn-chip" id="tray-iec-tray-disclaimer" data-t="tray_iecTrayDisclaimer" style="display:none;margin-top:8px">ℹ IEC 60364-5-52 Annex B fill limits are defined for conduit — applying to cable trays is conservative engineering practice.</div>
+    <div class="warn-chip" id="tray-iec-12cable-note" data-t="tray_iec12CableNote" style="display:none;margin-top:8px">ℹ IEC 60364-5-52 Annex B does not separate 1/2-cable cases; 40 % conservative limit applied.</div>
 
     <div class="fld" style="margin:10px 0 6px"><label data-t="pdfEngineer">Engineer</label>
       <div class="fld-inner"><input type="text" id="tray-engineer" placeholder="Name…"></div></div>

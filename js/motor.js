@@ -13,12 +13,12 @@ const MSC_METHOD_PRESETS = {
 // IEC 60364-5-52:2009 — Cu, PVC 70°C, 3-loaded conductors, 30°C ambient (20°C ground for D1)
 const IEC_SIZ_SIZES = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240, 300, 400, 500, 630];
 
-const IEC_AMP_CU = {
+const MSC_AMP_CU = {
   free:   [17.5, 24, 32, 41, 57, 76, 101, 125, 151, 192, 232, 269, 309, 353, 415, 477, 546, 626, 720],
   duct:   [13.5, 18, 24, 31, 42, 56,  73,  89, 108, 136, 164, 188, 216, 245, 286, 328, 382, 436, 502],
   burial: [22,   29, 38, 47, 63, 81, 104, 125, 148, 183, 216, 246, 278, 312, 361, 408, 459, 511, 567],
 };
-const IEC_AMP_AL = {
+const MSC_AMP_AL = {
   free:   [13.5, 18.5, 25, 32, 44, 59,  79,  98, 118, 150, 183, 210, 240, 276, 323, 371, 424, 486, 561],
   duct:   [10.5, 13.5, 18.5, 24, 32, 43, 57,  70,  84, 107, 129, 149, 170, 194, 227, 261, 303, 346, 399],
   burial: [18,   23,   29,  36, 48, 62,  80,  96, 113, 140, 166, 189, 213, 240, 277, 313, 352, 393, 437],
@@ -190,6 +190,7 @@ function mscCalcVdOnly() {
     detailText = `ΔU = ${dUPct.toFixed(2)} % > 15 %`;
   }
   tripStatus.textContent = T[lang][statusKey];
+  tripStatus.dataset.tkey = statusKey;
   tripDetail.textContent = detailText;
 
   const methodSel  = document.getElementById('msc-method');
@@ -286,7 +287,7 @@ function mscCalcFullSizing() {
   const mat      = MATERIAL[mscMaterial];
   const rho_cold = mat.rho20;                                     // 20 °C — cold cable (starting transient)
   const rho_run  = mat.rho20 * (1 + mat.alpha * (Tcable - 20));  // at operating temp — IEC 60364-5-52 §G.52.2
-  const ampTable = mscMaterial === 'cu' ? IEC_AMP_CU : IEC_AMP_AL;
+  const ampTable = mscMaterial === 'cu' ? MSC_AMP_CU : MSC_AMP_AL;
 
   // IEC 60364-5-52 Annex B correction factors
   const Ca   = getCa(ambTemp, 'pvc');        // Table B.52.14 — ambient air temperature
@@ -495,10 +496,12 @@ ${instMethod === 'burial' ? `
   if (res) {
     tripBox.classList.add('sc-trip-ok');
     tripStatus.textContent = T[lang].mscSizOk;
+    tripStatus.dataset.tkey = 'mscSizOk';
     tripDetail.textContent = `${res.S} mm² — Iz_eff = ${res.Iz_eff.toFixed(1)} A ≥ In = ${In.toFixed(1)} A  (Ca=${Ca.toFixed(3)}, Cg=${Cg.toFixed(3)}, Ku=${utilisation})`;
   } else {
     tripBox.classList.add('sc-trip-fail');
     tripStatus.textContent = T[lang].mscSizFailAll;
+    tripStatus.dataset.tkey = 'mscSizFailAll';
     tripDetail.textContent = `In = ${In.toFixed(1)} A  ·  L = ${L} m  ·  ${instLabel}`;
   }
 

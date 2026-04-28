@@ -570,7 +570,9 @@ function _sbShowResults(r) {
   if (qchEl && Q_chimney !== undefined) qchEl.textContent = (Q_chimney * 3600).toFixed(1) + ' m³/h';
 
   const badge = document.getElementById('sb-r-status');
-  badge.textContent = T[lang]['sbStatus' + statusKey.charAt(0).toUpperCase() + statusKey.slice(1)];
+  const sbKey = 'sbStatus' + statusKey.charAt(0).toUpperCase() + statusKey.slice(1);
+  badge.textContent = T[lang][sbKey];
+  badge.dataset.tkey = sbKey;
   badge.className = 'sb-status-badge ' + statusClass;
 
   document.getElementById('sb-status-hot').style.display = Ti > 55 ? 'block' : 'none';

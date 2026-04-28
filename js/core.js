@@ -34,6 +34,23 @@ const SYS_V = { dc: 24, ac1: 230, ac3: 400 };
 const awgToMm2 = n => { const d = 0.127 * Math.pow(92, (36 - n) / 39); return Math.PI / 4 * d * d; };
 const mm2ToAwg = a => { const d = Math.sqrt(4 * a / Math.PI); return -39 * Math.log(d / 0.127) / Math.log(92) + 36; };
 const fmtAwg = n => ({ '-3': '4/0', '-2': '3/0', '-1': '2/0', '0': '1/0' }[String(n)] ?? 'AWG ' + n);
+
+// Smallest standard AWG (largest conductor) where awgToMm2 >= required mm²
+// Standard AWG wiring sizes sorted small-to-large conductor:
+const _AWG_WIRE = [24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 3, 2, 1, 0, -1, -2, -3];
+// Standard kcmil sizes above 4/0 (~107 mm²), paired [label, mm²]
+const _KCMIL = [
+  ['250 kcmil', 126.7], ['300 kcmil', 152.0], ['350 kcmil', 177.4],
+  ['400 kcmil', 202.7], ['500 kcmil', 253.4], ['600 kcmil', 304.0],
+  ['700 kcmil', 354.7], ['750 kcmil', 380.0], ['800 kcmil', 405.4],
+  ['1000 kcmil', 506.7], ['1250 kcmil', 633.4],
+];
+function mm2ToSafeAwgStr(a) {
+  for (const n of _AWG_WIRE) { if (awgToMm2(n) >= a) return fmtAwg(n); }
+  for (const [lbl, mm2] of _KCMIL) { if (mm2 >= a) return lbl; }
+  return _KCMIL[_KCMIL.length - 1][0];
+}
+const mm2ToAwgStr = mm2ToSafeAwgStr; // alias kept for any other callers
 const fmtMm2 = v => v < 10 ? v.toFixed(3) : v < 100 ? v.toFixed(1) : v.toFixed(0);
 const fmtW = w => w < 1 ? w.toFixed(3) + ' W' : w < 100 ? w.toFixed(2) + ' W' : w.toFixed(1) + ' W';
 

@@ -354,12 +354,17 @@ function trayCalculate() {
   document.getElementById('tray-r-tray-area').textContent  = geom.area.toFixed(0) + ' mm²';
   document.getElementById('tray-r-remaining').textContent  = remaining.toFixed(0) + ' mm²';
   const voidNote = t.tray_additionalVoidNote || '(est. with 20% void reserve)';
-  document.getElementById('tray-r-additional').textContent = additional + ' × ⌀' + mostCommonOd.toFixed(1) + ' mm ' + voidNote;
+  const addEl = document.getElementById('tray-r-additional');
+  const addPrefix = additional + ' × ⌀' + mostCommonOd.toFixed(1) + ' mm ';
+  addEl.textContent = addPrefix + voidNote;
+  addEl.dataset.tkey = 'tray_additionalVoidNote';
+  addEl.dataset.tprefix = addPrefix;
   document.getElementById('tray-r-limit').textContent      = activeLimit + ' %';
   document.getElementById('tray-r-rule').textContent       = ruleDesc;
 
   const statusEl = document.getElementById('tray-r-status');
   statusEl.textContent = t[statusKey] || statusKey;
+  statusEl.dataset.tkey = statusKey;
   statusEl.className   = 'sb-status-badge ' + statusClass;
 
   /* Fill bar */
@@ -375,8 +380,10 @@ function trayCalculate() {
   const stackEl = document.getElementById('tray-stack-warn');
   stackEl.style.display = (stackWarn && _trayGeomMode === 'rect') ? 'flex' : 'none';
   if (stackWarn) {
-    const baseMsg = t.tray_warnStack || '⚠ Estimated stack height exceeds tray height';
-    stackEl.textContent = baseMsg + ' (est. stack height: ' + worstCaseStackHeight.toFixed(1) + ' mm (tray height: ' + geom.h + ' mm))';
+    const stackSuffix = ' (est. stack height: ' + worstCaseStackHeight.toFixed(1) + ' mm (tray height: ' + geom.h + ' mm))';
+    stackEl.textContent = (t.tray_warnStack || '⚠ Estimated stack height exceeds tray height') + stackSuffix;
+    stackEl.dataset.tkey = 'tray_warnStack';
+    stackEl.dataset.tsuffix = stackSuffix;
   }
 
   const mixedEl = document.getElementById('tray-mixed-warn');

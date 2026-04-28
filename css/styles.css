@@ -783,6 +783,13 @@ option{background:var(--surf-2);color:var(--on-surf)}
   font-size:.85rem;font-weight:400;color:var(--on-surf-var);
   margin-left:6px;font-family:'Roboto Mono',monospace;
 }
+.iec-awg-note{
+  display:flex;align-items:center;gap:5px;
+  margin:-2px 0 6px;font-size:.78rem;color:var(--on-surf-var);
+  font-family:'Roboto Mono',monospace;
+}
+.iec-awg-val{opacity:.75}
+.iec-awg-tip{font-size:.7rem;cursor:help;font-family:'Roboto',sans-serif;background:transparent;border-color:var(--out-var);color:var(--on-surf-var)}
 .iec-tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
 .iec-tbl td{padding:5px 0;border-bottom:1px solid var(--out-var);color:var(--on-surf-var)}
 .iec-tbl td:last-child{text-align:right;color:var(--on-surf);font-family:'Roboto Mono',monospace}

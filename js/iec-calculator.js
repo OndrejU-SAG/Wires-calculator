@@ -71,17 +71,22 @@ const IEC_AL_FACTOR = 0.78;
    only a related table exists, and supplies adiabatic k (IEC 60364-5-54
    Tab. 54.3) for PE sizing. caKey selects the Ca-temperature table.        */
 const IEC_INSUL = {
-  pvc70:    { base: 'pvc70',  mult: 1.00, Tmax: 70, k_cu: 115, k_al: 76, caKey: 'pvc70',  approx: false },
-  xlpe90:   { base: 'xlpe90', mult: 1.00, Tmax: 90, k_cu: 143, k_al: 94, caKey: 'xlpe90', approx: false },
-  lszh90:   { base: 'xlpe90', mult: 1.00, Tmax: 90, k_cu: 100, k_al: 66, caKey: 'xlpe90', approx: false },
-  epr90:    { base: 'xlpe90', mult: 1.00, Tmax: 90, k_cu: 143, k_al: 94, caKey: 'xlpe90', approx: false },
-  rubber60: { base: 'pvc70',  mult: 0.85, Tmax: 60, k_cu: 141, k_al: 93, caKey: 'pvc70',  approx: true  },
+  pvc70:    { base: 'pvc70',  mult: 1.00, Tmax: 70,  k_cu: 115, k_al: 76, caKey: 'pvc70',  approx: false },
+  xlpe90:   { base: 'xlpe90', mult: 1.00, Tmax: 90,  k_cu: 143, k_al: 94, caKey: 'xlpe90', approx: false },
+  lszh90:   { base: 'xlpe90', mult: 1.00, Tmax: 90,  k_cu: 100, k_al: 66, caKey: 'xlpe90', approx: false },
+  epr90:    { base: 'xlpe90', mult: 1.00, Tmax: 90,  k_cu: 143, k_al: 94, caKey: 'xlpe90', approx: false },
+  rubber60: { base: 'pvc70',  mult: 0.85, Tmax: 60,  k_cu: 141, k_al: 93, caKey: 'pvc70',  approx: true  },
+  sil150:   { base: 'xlpe90', mult: 1.41, Tmax: 150, k_cu: 132, k_al: 87, caKey: 'sil150', approx: true  },
+  ptfe200:  { base: 'xlpe90', mult: 1.68, Tmax: 200, k_cu: 133, k_al: 88, caKey: 'ptfe200',approx: true  },
 };
 
 /* ─── Correction factors (IEC 60364-5-52 Annex B) ──────────────────────── */
 const IEC_CA = {
-  pvc70:  {10:1.22, 15:1.17, 20:1.12, 25:1.06, 30:1.00, 35:0.94, 40:0.87, 45:0.79, 50:0.71, 55:0.61, 60:0.50},
-  xlpe90: {10:1.15, 15:1.12, 20:1.08, 25:1.04, 30:1.00, 35:0.96, 40:0.91, 45:0.87, 50:0.82, 55:0.76, 60:0.71},
+  pvc70:   {10:1.22, 15:1.17, 20:1.12, 25:1.06, 30:1.00, 35:0.94, 40:0.87, 45:0.79, 50:0.71, 55:0.61, 60:0.50},
+  xlpe90:  {10:1.15, 15:1.12, 20:1.08, 25:1.04, 30:1.00, 35:0.96, 40:0.91, 45:0.87, 50:0.82, 55:0.76, 60:0.71},
+  // Derived from formula Ca = sqrt((Tmax-Ta)/(Tmax-30)); approximate only
+  sil150:  {10:1.08, 15:1.06, 20:1.04, 25:1.02, 30:1.00, 35:0.98, 40:0.96, 45:0.94, 50:0.91, 55:0.89, 60:0.87},
+  ptfe200: {10:1.06, 15:1.04, 20:1.03, 25:1.01, 30:1.00, 35:0.98, 40:0.97, 45:0.95, 50:0.94, 55:0.92, 60:0.91},
 };
 /* IEC 60364-5-52 Tab. B.52.17 — cables in air, touching */
 const IEC_CG = {1:1.00, 2:0.80, 3:0.70, 4:0.65, 5:0.60, 6:0.57, 7:0.54, 8:0.52, 9:0.50, 12:0.45, 16:0.41, 20:0.38};
@@ -327,6 +332,13 @@ function iecCalculate() {
   const finalIzCorr = finalIzBase * Ctot;
   const finalVd     = vdAt(finalIdx);
 
+  // Warn when 1.5 mm² (IEC minimum) is recommended but a smaller conductor may suffice
+  if (finalIdx === 0 && !extrapWarn) {
+    const minWarn = _tt('iecWarnMinSize',
+      'ℹ IEC 60364-5-52 tables start at 1.5 mm²; for smaller conductors (≥ 0.25 mm² / AWG 24) use the Analytical calculator.');
+    extrapWarn = (extrapWarn ? extrapWarn + ' ' : '') + minWarn;
+  }
+
   // 5. Power loss
   const nCond = (_iecSys === '3ph') ? 3 : 2;
   const Ploss = I * I * (rho / finalSize) * nCond * L;
@@ -408,7 +420,9 @@ function iecRender(r) {
   html += `<div class="iec-card iec-card-rec">`;
   html += `  <div class="iec-card-hdr">${_tt('iecResRecHdr', '📐 Recommended phase conductor')}`;
   html += `    <span class="iec-lim-badge ${limCls}">${limByLabel}</span></div>`;
-  html += `  <div class="iec-big">${iecFmtMm2(r.finalSize)} mm² <span class="iec-sub">(${fmtAwg(Math.round(r.awg))})</span></div>`;
+  const awgTipText = _tt('iecAwgTip', 'Approximate AWG — IEC works in mm². Nearest larger standard AWG ≥ mm² value.');
+  html += `  <div class="iec-big">${iecFmtMm2(r.finalSize)} mm²</div>`;
+  html += `  <div class="iec-awg-note"><span class="iec-awg-val">${mm2ToAwgStr(r.finalSize)}</span><span class="tt iec-awg-tip" data-tip="${awgTipText.replace(/"/g, '&quot;')}" tabindex="0">ⓘ</span></div>`;
   html += `  <table class="iec-tbl">`;
   html += `    <tr><td>${_tt('iecResIzBase', 'Iz (table, method {m})').replace('{m}', r.method)}</td><td>${r.finalIzBase.toFixed(1)} A</td></tr>`;
   html += `    <tr><td>${_tt('iecResCa', 'Ca (Ta = {ta} °C, {ins})').replace('{ta}', r.Tamb).replace('{ins}', insName)}</td><td>× ${r.Ca.toFixed(2)}</td></tr>`;
@@ -523,7 +537,7 @@ function iecBuildStepsText(r) {
   out.push(`   ${r.peCalc}`);
   out.push('');
   out.push(_tt('iecResultLbl', 'Result'));
-  out.push(`   ${_tt('iecPhaseConductor', 'Phase conductor')}: ${iecFmtMm2(r.finalSize)} mm²  (${fmtAwg(Math.round(r.awg))})`);
+  out.push(`   ${_tt('iecPhaseConductor', 'Phase conductor')}: ${iecFmtMm2(r.finalSize)} mm²  (${mm2ToAwgStr(r.finalSize)})`);
   out.push(`   ${_tt('iecPeConductor',    'PE conductor')}:    ${iecFmtMm2(r.peSize)} mm²`);
   out.push(`   Iz_corr: ${r.finalIzCorr.toFixed(1)} A   (Ib = ${r.I} A → ${_tt('iecResMargin','Margin')} ${(((r.finalIzCorr - r.I) / r.I) * 100).toFixed(1)} %)`);
   out.push(`   dU: ${r.vd.V.toFixed(2)} V (${r.vd.pct.toFixed(2)} %)   ${_tt('iecResLimit','Limit')} ${r.maxVdPct} %`);
@@ -622,7 +636,7 @@ async function iecDownloadPdf() {
     doc.text(pdfSafe(recText), M + 5, y + 19);
     const recTextW = doc.getTextWidth(pdfSafe(recText));
     doc.setFontSize(11); doc.setFont('helvetica', 'normal'); setColor(C.muted, 'text');
-    const awgTxt = '(' + fmtAwg(Math.round(r.awg)) + ')';
+    const awgTxt = '(' + mm2ToAwgStr(r.finalSize) + ')';
     doc.text(pdfSafe(awgTxt), M + 5 + recTextW + 4, y + 19);
 
     // limiting-factor pill, top-right

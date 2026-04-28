@@ -11,6 +11,12 @@ function setLang(l) {
   document.querySelectorAll('[data-tt]').forEach(el => {
     const k = el.dataset.tt; if (T[l][k] !== undefined) el.dataset.tip = T[l][k];
   });
+  document.querySelectorAll('[data-tkey]').forEach(el => {
+    const k = el.dataset.tkey;
+    const prefix = el.dataset.tprefix || '';
+    const suffix = el.dataset.tsuffix || '';
+    if (T[l][k] !== undefined) el.textContent = prefix + T[l][k] + suffix;
+  });
   document.getElementById('length').placeholder = T[l].placeLen;
   document.getElementById('voltage').placeholder = T[l].placeV;
   document.getElementById('current').placeholder = T[l].placeA;
