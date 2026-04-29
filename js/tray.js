@@ -532,7 +532,7 @@ function trayDownloadPdf() {
   const engineer = document.getElementById('tray-engineer')?.value.trim() || '';
 
   function drawHeader(pageNum, totalPages) {
-    pdfMakeHeader(doc, { PW, M, title: 'Cable Tray / Conduit Fill Calculation' });
+    pdfMakeHeader(doc, { PW, M, title: _tt('trayPdfTitle', 'Cable Tray / Conduit Fill Calculation') });
     drawFooter(pageNum, totalPages);
   }
 
@@ -574,7 +574,7 @@ function trayDownloadPdf() {
   drawHeader(1, 1);  // total pages patched at end
 
   /* ---- Geometry ---- */
-  secHdr('Summary — Geometry');
+  secHdr(_tt('trayPdfGeom', 'Geometry Summary'));
   const geomTypeStr = r.geomMode === 'rect'
     ? r.trayType.charAt(0).toUpperCase() + r.trayType.slice(1) + ' tray'
     : (r.conduitType === 'round' ? 'Round conduit' : 'Oval duct');
@@ -590,14 +590,14 @@ function trayDownloadPdf() {
   y += 3;
 
   /* ---- Standard ---- */
-  secHdr('Summary — Fill Standard');
+  secHdr(_tt('trayPdfFillStd', 'Fill Standard'));
   kv('Standard',     r.standardName);
   kv('Applied rule', r.ruleDesc);
   kv('Fill limit',   r.activeLimit + ' %');
   y += 3;
 
   /* ---- Cable table ---- */
-  secHdr('Summary — Cables');
+  secHdr(_tt('trayPdfCables', 'Cable List'));
   const colW = [14, 30, 16, 30, 36, 24];
   const hdrs = ['#', 'OD (mm)', 'Count', 'Type', 'Area (mm^2)', 'Input'];
 
@@ -647,7 +647,7 @@ function trayDownloadPdf() {
      Results section
      ================================================================ */
   if (y > PH - M - 80) { doc.addPage(); drawHeader(_curPage(), 1); y = M + 22; }
-  secHdr('Results');
+  secHdr(_tt('trayPdfResult', 'Fill Result'));
   kv('Total cable area',   r.totalCableArea.toFixed(0) + ' mm^2');
   kv('Tray usable area',   r.trayArea.toFixed(0) + ' mm^2');
   kv('Fill percentage',    r.fillPct.toFixed(1) + ' %');
@@ -705,7 +705,7 @@ function trayDownloadPdf() {
      Calculation Procedure section
      ================================================================ */
   if (y > PH - M - 50) { doc.addPage(); drawHeader(_curPage(), 1); y = M + 22; }
-  secHdr('Calculation Procedure');
+  secHdr(_tt('iecPdfSteps', 'Step-by-Step Calculation'));
 
   const steps = _trayBuildSteps(r);
   steps.forEach(block => {

@@ -550,9 +550,8 @@ async function mscDownloadPdf() {
   const GRN = [0, 150, 80];    // pass green
 
   const engineer  = (document.getElementById('msc-engineer') || {}).value || '';
-  const STANDARD  = 'IEC 60364-5-52 / IEC 60287';
-  const TITLE_P1  = 'Motor Cable Sizing Calculation';
-  const TITLE_P2  = 'Motor Cable Sizing — Step-by-Step Calculation';
+  const STANDARD  = 'IEC 60364-5-52 / IEC 60034';
+  const TITLE_P1  = _tt('mscPdfTitle', 'Motor Cable Sizing Calculation');
 
   // ── Helpers (same patterns as switchboard.js) ─────────────────────────
 
@@ -562,7 +561,9 @@ async function mscDownloadPdf() {
 
   function pdfSection(y, title) {
     doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(...ACC);
-    doc.text(title, M, y);
+    doc.text(pdfSafe(title), M, y);
+    doc.setDrawColor(220, 222, 226); doc.setLineWidth(0.3);
+    doc.line(M + doc.getTextWidth(pdfSafe(title)) + 3, y - 1, PW - M, y - 1);
     return y + 6;
   }
 
@@ -585,7 +586,7 @@ async function mscDownloadPdf() {
   pdfMakeHeader(doc, { PW, M, title: TITLE_P1 });
   let y = M + 22;
 
-  y = pdfSection(y, 'Input Summary');
+  y = pdfSection(y, _tt('iecPdfInputs', 'Input Parameters'));
   y = inputTable(y, [
     ['Motor rated power Pn',                r.Pn + ' kW'],
     ['System voltage Un',                   r.Un + ' V'],
@@ -609,7 +610,7 @@ async function mscDownloadPdf() {
   ]);
   y += 8;
 
-  y = pdfSection(y, 'Results');
+  y = pdfSection(y, _tt('mscPdfResults', 'Results'));
   y += 2;
 
   if (r.res) {
@@ -689,10 +690,11 @@ async function mscDownloadPdf() {
 
   // ── Page 2: Step-by-step (same rendering as switchboard.js) ──────────
   doc.addPage();
-  pdfMakeHeader(doc, { PW, M, title: TITLE_P2 });
+  pdfMakeHeader(doc, { PW, M, title: TITLE_P1 });
+  drawFooter(doc.getNumberOfPages(), doc.getNumberOfPages());
   y = M + 22;
 
-  y = pdfSection(y, 'Step-by-Step Calculation');
+  y = pdfSection(y, _tt('iecPdfSteps', 'Step-by-Step Calculation'));
   y += 3;
 
   // Split into blocks separated by blank lines (same pattern as switchboard)
@@ -702,7 +704,7 @@ async function mscDownloadPdf() {
     const blockH = lines.length * 4.5 + 6;
     if (y + blockH > PH - M - 12) {
       doc.addPage();
-      pdfMakeHeader(doc, { PW, M, title: TITLE_P2 });
+      pdfMakeHeader(doc, { PW, M, title: TITLE_P1 });
       y = M + 22;
     }
 
@@ -737,7 +739,7 @@ async function mscDownloadPdf() {
       textLines.forEach(tl => {
         if (y > PH - M - 12) {
           doc.addPage();
-          pdfMakeHeader(doc, { PW, M, title: TITLE_P2 });
+          pdfMakeHeader(doc, { PW, M, title: TITLE_P1 });
           y = M + 22;
         }
         doc.text(tl, M + (indented ? 6 : 0), y);

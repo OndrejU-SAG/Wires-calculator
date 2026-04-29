@@ -1351,7 +1351,7 @@ async function scDownloadPdf() {
     const engineer = document.getElementById('sc-engineer')?.value.trim() || '';
 
     function drawHeader(pageNum, totalPages) {
-      pdfMakeHeader(doc, { PW, M, title: 'Short-Circuit Current Calculation' });
+      pdfMakeHeader(doc, { PW, M, title: _tt('scPdfTitle', 'Short-Circuit Calculation (AC)') });
       drawFooter(pageNum, totalPages);
     }
 
@@ -1361,7 +1361,9 @@ async function scDownloadPdf() {
 
     function secTitle(y, title) {
       doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(...ACC);
-      doc.text(title, M, y);
+      doc.text(pdfSafe(title), M, y);
+      doc.setDrawColor(220, 222, 226); doc.setLineWidth(0.3);
+      doc.line(M + doc.getTextWidth(pdfSafe(title)) + 3, y - 1, PW - M, y - 1);
       return y + 6;
     }
 
@@ -1572,11 +1574,11 @@ async function scDownloadPdf() {
     drawHeader(1, TOTAL_PAGES);
     let y = M + 22;
 
-    y = secTitle(y, 'Input Parameters');
+    y = secTitle(y, _tt('iecPdfInputs', 'Input Parameters'));
     y = inputTable(y, inputRows);
     y += 6;
 
-    y = secTitle(y, 'Results');
+    y = secTitle(y, _tt('scPdfResults', 'Fault Currents & Impedances'));
     resultsSection(y);
 
     // ── PAGE 2 (optional): Selectivity Analysis ──
@@ -1585,7 +1587,7 @@ async function scDownloadPdf() {
       doc.addPage();
       drawHeader(2, TOTAL_PAGES);
       y = M + 22;
-      y = secTitle(y, 'Selectivity / Discrimination Analysis  (IEC 60898 / IEC 60947-2 / IEC 60269)');
+      y = secTitle(y, _tt('scPdfProtection', 'Protection Assessment') + '  (IEC 60898 / IEC 60947-2 / IEC 60269)');
       y += 2;
 
       // Selectivity status badge — color/label depend on state, subState and verdictSource
@@ -1706,7 +1708,7 @@ async function scDownloadPdf() {
     doc.addPage();
     drawHeader(2, TOTAL_PAGES);
     y = M + 22;
-    y = secTitle(y, 'Step-by-Step Calculations  (IEC 60909 / IEC 60364)');
+    y = secTitle(y, _tt('iecPdfSteps', 'Step-by-Step Calculation') + '  (IEC 60909-0 / IEC 60364-4-41)');
 
     const allLines = document.getElementById('sc-steps').textContent.split('\n');
     allLines.forEach(line => {
@@ -2535,17 +2537,19 @@ async function dcDownloadPdf() {
     const engineer = document.getElementById('dc-engineer')?.value.trim() || '';
 
     function drawHeader(pageNum, totalPages) {
-      pdfMakeHeader(doc, { PW, M, title: 'DC Short-Circuit Calculation' });
+      pdfMakeHeader(doc, { PW, M, title: _tt('dcPdfTitle', 'Short-Circuit Calculation (DC)') });
       drawFooter(pageNum, totalPages);
     }
 
     function drawFooter(pageNum, totalPages) {
-      pdfMakeFooter(doc, { PW, PH, M, pageNum, totalPages, engineer, standard: 'IEC 61660 / Resistive method' });
+      pdfMakeFooter(doc, { PW, PH, M, pageNum, totalPages, engineer, standard: 'IEC 61660-1 / IEC 60364-4-41' });
     }
 
     function secTitle(y, title) {
       doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(...ACC);
-      doc.text(title, M, y);
+      doc.text(pdfSafe(title), M, y);
+      doc.setDrawColor(220, 222, 226); doc.setLineWidth(0.3);
+      doc.line(M + doc.getTextWidth(pdfSafe(title)) + 3, y - 1, PW - M, y - 1);
       return y + 6;
     }
 
@@ -2597,12 +2601,12 @@ async function dcDownloadPdf() {
     drawHeader(1, TOTAL_PAGES);
     let y = M + 22;
 
-    y = secTitle(y, 'Input Parameters');
+    y = secTitle(y, _tt('iecPdfInputs', 'Input Parameters'));
     y = inputTable(y, inputRows);
     y += 6;
 
     // ── Results summary ──
-    y = secTitle(y, 'Results');
+    y = secTitle(y, _tt('dcPdfResults', 'DC Results'));
 
     if (r.smps) {
       doc.setFillColor(255, 245, 220); doc.setDrawColor(200, 130, 0); doc.setLineWidth(0.5);
@@ -2733,7 +2737,7 @@ async function dcDownloadPdf() {
     doc.addPage();
     drawHeader(2, TOTAL_PAGES);
     y = M + 22;
-    y = secTitle(y, 'Step-by-Step Calculations  (IEC 61660 / Resistive method)');
+    y = secTitle(y, _tt('iecPdfSteps', 'Step-by-Step Calculation') + '  (IEC 61660-1 / Resistive method)');
 
     const allLines = document.getElementById('dc-steps').textContent.split('\n');
     allLines.forEach(line => {

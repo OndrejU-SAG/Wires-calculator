@@ -449,7 +449,7 @@
     <div class="sb-mode-row">
       <label data-t="sbCondTempLbl">Teplota vodiče:</label>
       <div class="fld-inner" style="width:90px"><input type="number" id="sb-cond-temp" value="70" min="20" max="90" step="1" oninput="sbCondTempChanged()"><span class="fld-unit">°C</span></div>
-      <span style="font-size:12px;color:var(--on-surf-var)">ρ(T) = ρ₂₀ × (1 + 0,00393 × (T−20)) &nbsp;[IEC 60228 Annex B / IEC 61439-1 §10.10]</span>
+      <span class="fld-hint" data-t="sbCondTempHint" style="font-size:11px;opacity:.8">70 °C (PVC) / 90 °C (XLPE/EPR)</span>
     </div>
     <div class="sb-tbl-wrap">
       <table class="sb-tbl">
@@ -513,7 +513,7 @@
         <option value="free" data-t="sbMountFree">Volně stojící</option>
         <option value="wall" data-t="sbMountWall">Nástěnná (zeď)</option>
       </select></div></div>
-    <div class="sb-ae-display" id="sb-ae-display">Ae = <span>—</span></div>
+    <div class="sb-ae-display" id="sb-ae-display"><span data-t="sbAe">Ae</span> <span class="tt" data-tt="ttSbAe" tabindex="0">ⓘ</span> = <span>—</span></div>
 
     <div class="divider" style="margin:14px 0"></div>
     <div class="sb-section-hdr" style="margin-bottom:10px">♨ Odvod tepla — konvekční koeficient k</div>
@@ -531,17 +531,17 @@
           <option value="3.5">Venkovní, přímé sluneční záření — 3.5 W/m²K</option>
           <option value="7.0">Hliníková skříň, přirozená konvekce — 7.0 W/m²K</option>
         </select></div></div>
-      <div class="fld"><label data-t="sbK">k [W/m²K] — konvekční koeficient</label>
+      <div class="fld"><label><span data-t="sbK">k [W/m²K] — konvekční koeficient</span> <span class="tt" data-tt="ttSbK" tabindex="0">ⓘ</span></label>
         <div class="fld-inner">
           <input type="number" id="sb-k-val" value="5.5" min="0.1" step="0.1" oninput="sbKManualEdit()">
           <button class="sb-suggest-btn" style="margin-right:8px" onclick="sbResetK()" data-t="sbKReset">Reset</button>
         </div></div>
-      <div class="fld-hint" id="sb-k-hint" style="margin-top:4px">ΔT = Pt / (k × Ae)  [IEC 61439 výchozí: 5.5 W/m²K — lakovaná ocel]</div>
+      <div class="fld-hint" id="sb-k-hint" data-t="sbKHint" style="margin-top:4px">IEC 61439-1 výchozí: 5.5 W/m²K — lakovaná ocel, volně stojící</div>
     </div>
     <div id="sb-heat-manual-row" style="display:none">
       <div class="fld"><label data-t="sbHeatManualVal">Celkový tepelný odpor skříně [W/K]</label>
         <div class="fld-inner"><input type="number" id="sb-manual-dissipation" value="10" min="0.1" step="0.1"><span class="fld-unit">W/K</span></div></div>
-      <div class="fld-hint" style="margin-top:4px">ΔT = Pt / K_diss — hodnota z datasheetu výrobce</div>
+      <div class="fld-hint" data-t="sbManualDissHint" style="margin-top:4px">Celková tepelná vodivost skříně [W/K] — z datasheetu výrobce</div>
     </div>
 
     <div class="divider" style="margin:14px 0"></div>
@@ -560,7 +560,7 @@
             <div class="fld-inner"><input type="number" id="sb-open-top" value="0" min="0" step="any"><span class="fld-unit">cm²</span></div></div>
           <div class="fld"><label data-t="sbOpenBot">Dolní otvory — bottom [cm²]</label>
             <div class="fld-inner"><input type="number" id="sb-open-bot" value="0" min="0" step="any"><span class="fld-unit">cm²</span></div></div>
-          <div class="fld-hint">x = f(Ao/Ae) — IEC 60890 §7.2 Obr. 1 — Ae_total = Ae × x</div>
+          <div class="fld-hint" data-t="sbNatVentHint">Větší otvory zvyšují účinnou chladicí plochu — IEC 60890 §7.2</div>
         </div>
       </div>
       <div class="sb-vent-group">
@@ -573,7 +573,7 @@
             <div class="fld-inner"><select id="sb-fan-preset" onchange="sbApplyFanPreset(this.value)" style="padding-left:9px"></select></div></div>
           <div class="fld"><label data-t="sbAirflow">Průtok vzduchu [m³/h]</label>
             <div class="fld-inner"><input type="number" id="sb-airflow" value="0" min="0" step="any"><span class="fld-unit">m³/h</span></div></div>
-          <div class="fld-hint">P_fan = cp x rho x Q x dT  (cp=1005 J/(kg*K), rho=1.2 kg/m3)</div>
+          <div class="fld-hint" data-t="sbForceVentHint">Větší průtok vzduchu = větší odvod ztrátového tepla</div>
         </div>
       </div>
     </div>
@@ -581,7 +581,7 @@
 
   <!-- AMBIENT + CALCULATE -->
   <div class="card">
-    <div class="fld" style="margin-bottom:12px"><label data-t="sbTa">Teplota okolí Ta [°C]</label>
+    <div class="fld" style="margin-bottom:12px"><label><span data-t="sbTa">Teplota okolí Ta [°C]</span> <span class="tt" data-tt="ttSbTa" tabindex="0">ⓘ</span></label>
       <div class="fld-inner"><input type="number" id="sb-ta" value="35" min="-50" max="60"><span class="fld-unit">°C</span></div></div>
     <div class="fld" style="margin-bottom:12px"><label data-t="sbEngineer">Zpracoval / Engineer</label>
       <div class="fld-inner"><input type="text" id="sb-engineer" placeholder="Jméno / Name…"></div></div>
@@ -700,7 +700,7 @@
     </div>
     <div id="sc-src-known-panel">
       <div class="fld">
-        <label data-t="scIkBusbar">Ik na přípojnici / přívodu</label>
+        <label><span data-t="scIkBusbar">Ik na přípojnici / přívodu</span> <span class="tt" data-tt="ttScIkBusbar" tabindex="0">ⓘ</span></label>
         <div class="fld-inner"><input type="number" id="sc-ik-busbar" value="10" min="0.001" step="0.1" oninput="scUpdateZsDisplay()"><span class="fld-unit">kA</span></div>
         <div class="fld-hint" data-t="scIkHint">Z dokumentace DNO nebo výpočtu transformátoru</div>
       </div>
@@ -751,7 +751,7 @@
     <div class="card-hdr" data-t="scCableHdr">🔌 Kabel</div>
     <div class="row c3">
       <div class="fld">
-        <label data-t="scSphase">Fáze S</label>
+        <label><span data-t="scSphase">Fáze S</span> <span class="tt" data-tt="ttScSphase" tabindex="0">ⓘ</span></label>
         <div class="fld-inner"><select id="sc-s-phase" style="padding-left:9px"></select></div>
       </div>
       <div class="fld">
@@ -799,7 +799,7 @@
         <div class="fld-inner"><input type="number" id="sc-re" value="5" min="0" step="0.1"><span class="fld-unit">Ω</span></div>
         <div class="fld-hint" data-t="scReHint">Změřená hodnota nebo odhad dle IEC 60364</div>
       </div>
-      <div class="fld-hint" data-t="scTtRcdNote" style="margin-bottom:8px;color:var(--warn,#b45309);font-weight:500">Dle IEC 60364-4-41 §411.5 sítě TT obecně vyžadují RCD; odpojení pomocí jističe (MCB) je možné jen pokud Z_smyčky umožní ≥5×In do ≤1 s.</div>
+      <div class="fld-note" data-t="scTtRcdNote" style="margin-bottom:8px;color:var(--warn-col);font-weight:500">Dle IEC 60364-4-41 §411.5 sítě TT obecně vyžadují RCD; odpojení pomocí jističe (MCB) je možné jen pokud Z_smyčky umožní ≥5×In do ≤1 s.</div>
     </div>
     <button class="sc-import-btn" onclick="scImportFromCalc()" data-t="scImport">⇡ Import z kalkulátoru</button>
   </div>
@@ -944,7 +944,7 @@
               <option value="0.1">≤ 0.1 s (citlivé / zásuvky)</option>
             </select>
           </div>
-          <div class="fld-hint">gG: k_a dle IEC 60269-2 Annex B — I₂ = 1.6 × In_up (přetíž., info)</div>
+          <div class="fld-hint" data-t="selFuseHint">gG: I₂ = 1,6 × In_up (přetíž., info) — pro zkrat použijte I²t z datasheetu</div>
         </div>
       </div>
       <!-- Manufacturer coordination table override (Is) -->
@@ -1409,7 +1409,7 @@
 
     <div class="row c3">
       <div class="fld">
-        <label data-t="mscPn">Jmenovitý výkon Pn</label>
+        <label><span data-t="mscPn">Jmenovitý výkon Pn</span> <span class="tt" data-tt="ttMscPn" tabindex="0">ⓘ</span></label>
         <div class="fld-inner"><input type="number" id="msc-pn" value="7.5" placeholder="např. 7.5" min="0" step="any"><span class="fld-unit">kW</span></div>
       </div>
       <div class="fld">
@@ -1535,7 +1535,7 @@
 
       <div class="row c3" style="margin-bottom:12px">
         <div class="fld">
-          <label data-t="mscAmbient">Teplota okolí</label>
+          <label><span data-t="mscAmbient">Teplota okolí</span> <span class="tt" data-tt="ttMscAmbient" tabindex="0">ⓘ</span></label>
           <div class="fld-inner"><input type="number" id="msc-ambient" value="30" min="25" max="60" step="5"><span class="fld-unit">°C</span></div>
           <div class="fld-hint" data-t="mscAmbientHint">Tab. B.52.14 — faktor Ca</div>
         </div>
@@ -1710,7 +1710,7 @@
       </div>
       <div class="row c2">
         <div class="fld">
-          <label data-t="tray_width">Width (mm)</label>
+          <label><span data-t="tray_width">Width (mm)</span> <span class="tt" data-tt="ttTrayDims" tabindex="0">ⓘ</span></label>
           <div class="fld-inner"><input type="number" id="tray-width" value="300" min="1"><span class="fld-unit">mm</span></div>
         </div>
         <div class="fld">
@@ -1752,7 +1752,7 @@
 
   <!-- Standard toggle -->
   <div class="card">
-    <div class="card-hdr" data-t="tray_standardHdr">📋 Fill Standard</div>
+    <div class="card-hdr"><span data-t="tray_standardHdr">📋 Fill Standard</span> <span class="tt" data-tt="ttTrayStd" tabindex="0">ⓘ</span></div>
     <div class="seg-group" style="margin-bottom:0">
       <button class="seg-btn active" onclick="traySetStandard(this,'iec')" data-t="tray_stdIec">IEC 60364-5-52</button>
       <button class="seg-btn" onclick="traySetStandard(this,'nec')" data-t="tray_stdNec">NEC 392 / 358</button>

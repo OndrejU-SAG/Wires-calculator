@@ -126,6 +126,13 @@ function resetToDefaults() {
       const _iecSteps = document.getElementById('iec-steps-card');
       if (_iecRes) _iecRes.style.display = 'none';
       if (_iecSteps) _iecSteps.style.display = 'none';
+      // Hide physical result cards
+      const _physRes = document.getElementById('results');
+      const _wiCard  = document.getElementById('wiCard');
+      const _calcSteps = document.getElementById('calcStepsCard');
+      if (_physRes) _physRes.style.display = 'none';
+      if (_wiCard) _wiCard.style.display = 'none';
+      if (_calcSteps) _calcSteps.style.display = 'none';
       break;
     }
 
@@ -135,6 +142,7 @@ function resetToDefaults() {
       break;
 
     case 2:
+      clickBtn('#sb-enc-custom-tab');
       document.getElementById('sb-enc-h').value = 1400;
       document.getElementById('sb-enc-w').value = 800;
       document.getElementById('sb-enc-d').value = 500;
@@ -147,6 +155,7 @@ function resetToDefaults() {
       document.getElementById('sb-airflow').value = 0;
       document.getElementById('sb-open-area').value = 0;
       document.getElementById('sb-manual-dissipation').value = 10;
+      { const _sbRes = document.getElementById('sb-res-card'); if (_sbRes) _sbRes.style.display = 'none'; }
       break;
 
     case 3:
@@ -172,6 +181,7 @@ function resetToDefaults() {
         document.getElementById('sc-icu').value = 6;
         if (typeof scOnDevTypeChange === 'function') scOnDevTypeChange();
         if (typeof scUpdateZsDisplay === 'function') scUpdateZsDisplay();
+        { const _scRes = document.getElementById('sc-res-card'); if (_scRes) _scRes.style.display = 'none'; }
       } else {
         clickBtn('[onclick*="dcSetMaterial"][onclick*="\'cu\'"]');
         document.getElementById('dc-udc').value = 48;
@@ -189,6 +199,7 @@ function resetToDefaults() {
         document.getElementById('dc-dev-curve').value = 'C';
         document.getElementById('dc-icu').value = 6;
         if (typeof dcUpdateRsrcDisplay === 'function') dcUpdateRsrcDisplay();
+        { const _dcRes = document.getElementById('dc-res-card'); if (_dcRes) _dcRes.style.display = 'none'; }
       }
       break;
 
@@ -209,8 +220,11 @@ function resetToDefaults() {
       document.getElementById('msc-s').value = 2.5;
       document.getElementById('msc-len').value = 20;
       document.getElementById('msc-ik').value = 10;
+      { const _mscFreq = document.getElementById('msc-freq'); if (_mscFreq) _mscFreq.value = '50'; }
       clickBtn('[onclick*="mscSetMaterial"][onclick*="\'cu\'"]');
       window._mscSizLast = null;
+      { const _mscRes = document.getElementById('msc-res-card'); if (_mscRes) _mscRes.style.display = 'none'; }
+      { const _mscSizRes = document.getElementById('msc-siz-res-card'); if (_mscSizRes) _mscSizRes.style.display = 'none'; }
       break;
 
     case 5:
@@ -222,6 +236,8 @@ function resetToDefaults() {
       document.getElementById('tray-diameter').value = 50;
       document.getElementById('tray-oval-w').value = 50;
       document.getElementById('tray-oval-h').value = 30;
+      { const _trayRes = document.getElementById('tray-res-card'); if (_trayRes) _trayRes.style.display = 'none'; }
+      if (typeof trayRenderRows === 'function') trayRenderRows();
       break;
   }
 
@@ -256,7 +272,7 @@ const _savedColor = localStorage.getItem('color') || 'teal';
 setColor(_savedColor);
 // Restore saved language, fall back to browser locale, then 'eng'
 const _storedLang = localStorage.getItem('language');
-const _validLangs = ['cze', 'eng'];
+const _validLangs = ['cze', 'eng', 'deu'];
 const _browserLang = navigator.language && navigator.language.startsWith('cs') ? 'cze' : 'eng';
 const _savedLang = (_storedLang && _validLangs.includes(_storedLang)) ? _storedLang : _browserLang;
 // Apply language (updates all data-t elements and persists the choice)

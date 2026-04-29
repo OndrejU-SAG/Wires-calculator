@@ -745,7 +745,7 @@ async function sbDownloadPdf() {
     const engineer = document.getElementById('sb-engineer')?.value.trim() || '';
 
     function drawHeader(pageNum, totalPages) {
-      pdfMakeHeader(doc, { PW, M, title: 'Switchboard Temperature Rise Calculation' });
+      pdfMakeHeader(doc, { PW, M, title: _tt('sbPdfTitle', 'Switchboard Temperature Rise Calculation') });
       drawFooter(pageNum, totalPages);
     }
 
@@ -755,9 +755,12 @@ async function sbDownloadPdf() {
 
     // ---- TABLE HELPER ----
     function pdfSection(y, title) {
-      if (y > PH - M - 25) { doc.addPage(); return [margin30(), title]; }
+      if (y > PH - M - 25) { doc.addPage(); drawHeader(doc.getNumberOfPages(), doc.getNumberOfPages()); return margin30(); }
       doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(...ACC);
-      doc.text(title, M, y); return y + 6;
+      doc.text(pdfSafe(title), M, y);
+      doc.setDrawColor(220, 222, 226); doc.setLineWidth(0.3);
+      doc.line(M + doc.getTextWidth(pdfSafe(title)) + 3, y - 1, PW - M, y - 1);
+      return y + 6;
     }
     function margin30() { return M + 22; }
 
@@ -912,7 +915,7 @@ async function sbDownloadPdf() {
     drawHeader(1, TOTAL_PAGES);
     let y = M + 22;
 
-    y = pdfSection(y, 'Input Summary');
+    y = pdfSection(y, _tt('iecPdfInputs', 'Input Parameters'));
     y = inputTable(y, [
       ['Enclosure (H × W × D)', `${r.h_mm} × ${r.w_mm} × ${r.d_mm} mm`],
       ['Mounting',              mountStr],
@@ -926,7 +929,7 @@ async function sbDownloadPdf() {
     ]);
     y += 5;
 
-    y = pdfSection(y, 'Results');
+    y = pdfSection(y, _tt('sbPdfResults', 'Thermal Results'));
     y = resultsBox(y, r);
     y += 4;
 
@@ -956,21 +959,21 @@ async function sbDownloadPdf() {
     y = M + 22;
 
     // Conductor table
-    y = pdfSection(y, 'Conductor Losses');
+    y = pdfSection(y, _tt('sbPdfCables', 'Cable Losses Detail'));
     y = dataTable(doc, y, PH, ['#', 'Size', 'L [m]', 'I [A]', 'n', 'Loss [W]'],
       condRows, [10, 38, 20, 20, 14, 28]);
     y += 6;
 
     // Device table
     if (y > PH - M - 40) { doc.addPage(); drawHeader(TOTAL_PAGES, TOTAL_PAGES); y = M + 22; }
-    y = pdfSection(y, 'Device Losses');
+    y = pdfSection(y, _tt('sbPdfDevices', 'Device Losses Detail'));
     y = dataTable(doc, y, PH, ['#', 'Label', 'Type', 'In [A]', 'W/unit', 'n', 'Total [W]'],
       devRows, [10, 30, 30, 18, 18, 12, 22]);
     y += 8;
 
     // Calculations
     if (y > PH - M - 40) { doc.addPage(); drawHeader(TOTAL_PAGES, TOTAL_PAGES); y = M + 22; }
-    y = pdfSection(y, 'Step-by-Step Calculations');
+    y = pdfSection(y, _tt('iecPdfSteps', 'Step-by-Step Calculation'));
     const steps = document.getElementById('sb-steps').textContent.split('\n\n');
     doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(40, 40, 40);
     steps.forEach(block => {

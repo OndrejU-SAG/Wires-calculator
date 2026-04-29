@@ -366,13 +366,15 @@ async function calcDownloadPdf() {
     const engineer = document.getElementById('calc-engineer')?.value.trim() || '';
 
     function drawHeader(pg, tot) {
-      pdfMakeHeader(doc, { PW, M, title: 'Cable Sizing Calculation  (IEC 60228 / IEC 60364-5-52)' });
-      pdfMakeFooter(doc, { PW, PH, M, pageNum: pg, totalPages: tot, engineer, standard: 'IEC 60228 / IEC 60364' });
+      pdfMakeHeader(doc, { PW, M, title: _tt('calcPdfTitle', 'Analytical Cable Sizing  (IEC 60364-5-52 / IEC 60228)') });
+      pdfMakeFooter(doc, { PW, PH, M, pageNum: pg, totalPages: tot, engineer, standard: 'IEC 60364-5-52 / IEC 60228' });
     }
 
     function secTitle(y, txt) {
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...ACC);
       doc.text(pdfSafe(txt), M, y);
+      doc.setDrawColor(220, 222, 226); doc.setLineWidth(0.3);
+      doc.line(M + doc.getTextWidth(pdfSafe(txt)) + 3, y - 1, PW - M, y - 1);
       return y + 6;
     }
 
@@ -396,7 +398,7 @@ async function calcDownloadPdf() {
     const L_disp = r.dist === 'total' ? r.Lone * 2 : r.Lone;
     const lbl = r.dist === 'total' ? 'total' : 'one-way';
 
-    y = secTitle(y, 'Input Parameters');
+    y = secTitle(y, _tt('iecPdfInputs', 'Input Parameters'));
     const inputs = [
       ['System', sysLbl + (r.fEff > 0 ? '  |  f = ' + r.freq + ' Hz' : '')],
       ['Supply voltage', r.V + ' V'],
@@ -412,7 +414,7 @@ async function calcDownloadPdf() {
     inputs.forEach((row, i) => { y = inputRow(y, row[0], row[1], i % 2 === 0); });
     y += 6;
 
-    y = secTitle(y, 'Constraint Analysis');
+    y = secTitle(y, _tt('calcPdfConstraints', 'Constraint Analysis'));
     const cardW = CW / 2, cardH = 28;
     const cards = [
       { lbl: 'Voltage Drop',  fml: r.sysType === 'ac3' ? 'A = sqrt(3)*I*rho*L / Vd' : 'A = I*2*rho*L / Vd',
@@ -516,7 +518,7 @@ async function calcDownloadPdf() {
     doc.addPage();
     drawHeader(2, 2);
     y = M + 22;
-    y = secTitle(y, 'Step-by-Step Calculation');
+    y = secTitle(y, _tt('iecPdfSteps', 'Step-by-Step Calculation'));
     y += 1;
     doc.setFontSize(7.5); doc.setFont('Courier', 'normal'); doc.setTextColor(50, 50, 50);
     const stepLines = r.stepsText.split('\n');
