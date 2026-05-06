@@ -25,7 +25,7 @@ const TRAY_LIMITS = {
   single: { iec: 40, nec: 53 },   // IEC: Annex B no separate 1-cable case; 40% conservative limit applied
   two:    { iec: 40, nec: 31 },   // IEC: same Annex B; NEC: Ch.9 T.1
   power:  { iec: 40, nec: 50 },
-  signal: { iec: 40, nec: 50 },
+  signal: { iec: 40, nec: 75 },  // NEC 392.22 — dedicated communications/signal trays
   mixed:  { iec: 40, nec: 50 }
 };
 

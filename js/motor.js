@@ -57,6 +57,27 @@ function getCg(n) {
   return IEC_CG_TABLE[idx];
 }
 
+// IEC 60364-5-52 Table B.52.20 — soil thermal-resistivity correction (direct burial D1 only)
+function getCrho(rhoSoil) {
+  const R = IEC_CRHO_RHO, F = IEC_CRHO_FACT;
+  if (rhoSoil <= R[0]) return F[0];
+  if (rhoSoil >= R[R.length - 1]) return F[F.length - 1];
+  for (let i = 0; i < R.length - 1; i++) {
+    if (rhoSoil >= R[i] && rhoSoil <= R[i + 1]) {
+      const t = (rhoSoil - R[i]) / (R[i + 1] - R[i]);
+      return F[i] + t * (F[i + 1] - F[i]);
+    }
+  }
+  return 1.0;
+}
+
+// Show / hide soil-resistivity input depending on installation method selection
+function mscOnInstMethodChange() {
+  const method = document.getElementById('msc-inst-method')?.value;
+  const soilRow = document.getElementById('msc-soil-rho-row');
+  if (soilRow) soilRow.style.display = method === 'burial' ? '' : 'none';
+}
+
 const MM2_AWG_STR = {
   1.5: 'AWG 16',      2.5: 'AWG 14',      4:   'AWG 12',      6:   'AWG 10',
   10:  'AWG 8',       16:  'AWG 6',        25:  'AWG 4',       35:  'AWG 2',
@@ -292,7 +313,9 @@ function mscCalcFullSizing() {
   // IEC 60364-5-52 Annex B correction factors
   const Ca   = getCa(ambTemp, 'pvc');        // Table B.52.14 — ambient air temperature
   const Cg   = getCg(nGrouping);             // Table B.52.17 — grouping
-  const Crho = instMethod === 'burial' ? 1.00 : 1.00; // Table B.52.20 — soil resistivity (ref. 2.5 K·m/W)
+  // Table B.52.20 — soil thermal-resistivity correction (direct burial only; ref. 2.5 K·m/W → 1.00)
+  const rhoSoilInput = parseFloat(document.getElementById('msc-soil-rho')?.value);
+  const Crho = instMethod === 'burial' ? getCrho(isNaN(rhoSoilInput) ? 2.5 : rhoSoilInput) : 1.00;
   const Xkm      = cableType === 'single' ? 0.08 : 0.07;  // Ω/km
   const InFactor = phases === 'ac3' ? Math.sqrt(3) : 1;
   const vdFactor = phases === 'ac3' ? Math.sqrt(3) : 2;
@@ -376,12 +399,12 @@ Ref: IEC 60364-5-52 §G.52.2 + Annex B (Tables B.52.14, B.52.17${instMethod === 
       n = ${nGrouping} circuit${nGrouping > 1 ? 's' : ''}  →  Cg = ${Cg.toFixed(4)}
 ${instMethod === 'burial' ? `
    c) Crho — soil thermal-resistivity factor (Table B.52.20, direct burial D1)
-      Reference soil resistivity: 2.5 K*m/W  ->  Crho = 1.00 (reference condition)
+      Soil resistivity: ${isNaN(rhoSoilInput) ? 2.5 : rhoSoilInput} K*m/W  ->  Crho = ${Crho.toFixed(4)}
 ` : ''}
    Ku — utilisation factor (user-defined): ${utilisation}
 
    Iz_eff = Iz_table * Ca * Cg${instMethod === 'burial' ? ' * Crho' : ''} * Ku
-          = Iz_table * ${Ca.toFixed(4)} * ${Cg.toFixed(4)}${instMethod === 'burial' ? ' * 1.0000' : ''} * ${utilisation}
+          = Iz_table * ${Ca.toFixed(4)} * ${Cg.toFixed(4)}${instMethod === 'burial' ? ' * ' + Crho.toFixed(4) : ''} * ${utilisation}
           = Iz_table * ${(Ca * Cg * Crho * utilisation).toFixed(4)}
 
 6. Iterative sizing — first size satisfying: Iz_eff >= In, dU_run <= ${maxVdRun} %, dU_start <= ${maxVdStart} %
@@ -530,7 +553,8 @@ ${instMethod === 'burial' ? `
     Pn, Un, cosN, eta, cosStart, kstart, L, maxVdRun, maxVdStart,
     method, methodName, cableType, instMethod, instLabel, phases, phaseLabel,
     In, Istart, sinN, sinStart, Tcable, rho_cold, rho_run, Xkm, vdFactor, InFactor, matLabel,
-    ambTemp, nGrouping, utilisation, Ca, Cg, Crho, freq,
+    ambTemp, nGrouping, utilisation, Ca, Cg, Crho,
+    rhoSoil: isNaN(rhoSoilInput) ? 2.5 : rhoSoilInput, freq,
     res, stepsText,
   };
 }
@@ -604,7 +628,8 @@ async function mscDownloadPdf() {
     ['Ambient temperature (IEC Tab. B.52.14)', r.ambTemp + ' \xb0C  →  Ca = ' + r.Ca.toFixed(4) + '  (PVC 70\xb0C)'],
     ['Grouping — parallel circuits (IEC Tab. B.52.17)', 'n = ' + r.nGrouping + '  →  Cg = ' + r.Cg.toFixed(4)],
     ['Utilisation factor Ku',               String(r.utilisation)],
-    ...(r.instMethod === 'burial' ? [['Soil resistivity (IEC Tab. B.52.20)', 'Reference 2.5 K\xb7m/W  →  Crho = 1.00']] : []),
+    ...(r.instMethod === 'burial' ? [['Soil resistivity (IEC Tab. B.52.20)',
+        (r.rhoSoil != null ? r.rhoSoil : 2.5) + ' K\xb7m/W  →  Crho = ' + (r.Crho != null ? r.Crho.toFixed(4) : '1.0000')]] : []),
     ['Max running voltage drop limit',      r.maxVdRun + ' %'],
     ['Max starting voltage drop limit',     r.maxVdStart + ' %'],
   ]);

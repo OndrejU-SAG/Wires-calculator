@@ -560,6 +560,17 @@
             <div class="fld-inner"><input type="number" id="sb-open-top" value="0" min="0" step="any"><span class="fld-unit">cm²</span></div></div>
           <div class="fld"><label data-t="sbOpenBot">Dolní otvory — bottom [cm²]</label>
             <div class="fld-inner"><input type="number" id="sb-open-bot" value="0" min="0" step="any"><span class="fld-unit">cm²</span></div></div>
+          <!-- Ventilation calculation model selector -->
+          <div class="fld" style="margin-top:8px">
+            <label data-t="sbNatModel">Model výpočtu větrání</label>
+            <div class="fld-inner">
+              <select id="sb-nat-model" style="padding-left:9px" onchange="sbOnNatModelChange()">
+                <option value="chimney" data-t="sbNatModelChimney">Dynamický komínový efekt (přesnější, neformativní)</option>
+                <option value="iec"     data-t="sbNatModelIec">IEC 60890 §7.2 — normativní (korekční faktor natX)</option>
+              </select>
+            </div>
+            <div id="sb-nat-model-hint" class="fld-hint" data-t="sbNatModelHintChimney">Iterativní Q(ΔT) model — fyzikálně přesnější, ale není součástí IEC 60890 §7.2.</div>
+          </div>
           <div class="fld-hint" data-t="sbNatVentHint">Větší otvory zvyšují účinnou chladicí plochu — IEC 60890 §7.2</div>
         </div>
       </div>
@@ -741,8 +752,8 @@
     </div>
     <div class="fld" style="margin-top:10px">
       <label><span data-t="scXR">X/R poměr zdroje</span> <span class="tt" data-tt="ttScXR" tabindex="0">ⓘ</span></label>
-      <div class="fld-inner"><input type="number" id="sc-xr" value="1.0" min="0" max="20" step="0.1" oninput="scSetSourceXR()"><span class="fld-unit">—</span></div>
-      <div class="fld-hint" data-t="scXRHint">Typicky 0.5–2 pro LV transformátor; ovlivňuje Rs/Xs složky Zs</div>
+      <div class="fld-inner"><input type="number" id="sc-xr" value="4.0" min="0" max="20" step="0.1" oninput="scSetSourceXR()"><span class="fld-unit">—</span></div>
+      <div class="fld-hint" data-t="scXRHint">IEC 60909-0 Tab. 3: typicky 4–8 pro LV distribuční transformátor; ovlivňuje Rs/Xs složky Zs</div>
     </div>
   </div>
 
@@ -1514,12 +1525,28 @@
       <div class="fld" style="margin-bottom:12px">
         <label data-t="mscInstMethod">Způsob uložení (IEC 60364-5-52)</label>
         <div class="fld-inner">
-          <select id="msc-inst-method" style="padding-left:9px;font-size:13px">
+          <select id="msc-inst-method" style="padding-left:9px;font-size:13px" onchange="mscOnInstMethodChange()">
             <option value="duct"   data-t="mscInstDuct">Trubka / kanál — metoda B2</option>
             <option value="free"   data-t="mscInstFreeAir">Volný vzduch — metoda E</option>
             <option value="burial" data-t="mscInstBurial">Přímý zákop — metoda D1</option>
           </select>
         </div>
+      </div>
+
+      <!-- Soil thermal resistivity — shown only for direct burial (IEC 60364-5-52 Table B.52.20) -->
+      <div id="msc-soil-rho-row" class="fld" style="display:none;margin-bottom:12px">
+        <label data-t="mscSoilRho">Tepelný odpor půdy ρ<sub>soil</sub> (IEC Tab. B.52.20)</label>
+        <div class="fld-inner">
+          <select id="msc-soil-rho" style="padding-left:9px">
+            <option value="0.5">0.5 K·m/W — Crho = 1.28  (vlhká / mokrá půda)</option>
+            <option value="1.0">1.0 K·m/W — Crho = 1.18  (jíl, vlhký písek)</option>
+            <option value="1.5">1.5 K·m/W — Crho = 1.10  (jíl / loam)</option>
+            <option value="2.0">2.0 K·m/W — Crho = 1.05  (písek, středně vlhký)</option>
+            <option value="2.5" selected>2.5 K·m/W — Crho = 1.00  (referenční — IEC 60364-5-52)</option>
+            <option value="3.0">3.0 K·m/W — Crho = 0.96  (suchý písek / štěrk)</option>
+          </select>
+        </div>
+        <div class="fld-hint" data-t="mscSoilRhoHint">Referenční hodnota 2.5 K·m/W (Crho = 1.00). Mokrá půda zlepšuje, suchý písek snižuje ampacitu.</div>
       </div>
 
       <div class="row c2" style="margin-bottom:12px">

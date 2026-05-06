@@ -134,6 +134,7 @@ let sbEncMode = 'custom';
 let sbHeatMode = 'calc';
 let sbVentOpen = false;
 let sbRowId = 0;
+let sbNatModel = 'chimney'; // 'chimney' = dynamic iterative | 'iec' = IEC 60890 §7.2 natX
 
 /* Logo / company data loaded by pdf.js into _pdfLogoB64, _pdfLogoNW, _pdfLogoNH, _pdfCompany */
 
@@ -452,6 +453,17 @@ function sbToggleNatVent(cb) {
   document.getElementById('sb-nat-fields').style.display = cb.checked ? '' : 'none';
 }
 
+function sbOnNatModelChange() {
+  const sel = document.getElementById('sb-nat-model');
+  sbNatModel = sel?.value || 'chimney';
+  const hint = document.getElementById('sb-nat-model-hint');
+  if (hint) {
+    hint.textContent = sbNatModel === 'iec'
+      ? (T[lang]?.sbNatModelHintIec  || 'IEC 60890 §7.2 normativní: Ae_eff = natX × Ae (statický korekční faktor z Fig. 1). Výsledky jsou srovnatelné s normou.')
+      : (T[lang]?.sbNatModelHintChimney || 'Iterativní Q(ΔT) model — fyzikálně přesnější, ale není součástí IEC 60890 §7.2.');
+  }
+}
+
 function sbToggleForceVent(cb) {
   document.getElementById('sb-force-fields').style.display = cb.checked ? '' : 'none';
 }
@@ -493,10 +505,14 @@ function sbCalculate() {
   const natOn = document.getElementById('sb-nat-on').checked;
   const openTop_cm2 = natOn ? (parseFloat(document.getElementById('sb-open-top').value) || 0) : 0;
   const openBot_cm2 = natOn ? (parseFloat(document.getElementById('sb-open-bot').value) || 0) : 0;
-  const Ao_m2 = (openTop_cm2 + openBot_cm2) * 1e-4;  // total area for informational natX only
+  const Ao_m2 = (openTop_cm2 + openBot_cm2) * 1e-4;
   const natRatio = Ae > 0 ? Ao_m2 / Ae : 0;
-  const natX = natOn ? natVentMultiplier(Ao_m2, Ae) : 1;  // informational only — not used in heat balance
-  const Ae_total = Ae;  // natX multiplier removed; chimney flow model handles airflow instead
+  const natX = natOn ? natVentMultiplier(Ao_m2, Ae) : 1; // IEC 60890 §7.2 Fig.1 multiplier
+  // Effective cooling surface depends on selected model:
+  //   'iec'     → Ae_total = natX × Ae  (normative IEC 60890 §7.2 approach)
+  //   'chimney' → Ae_total = Ae (dynamic chimney-flow model handles ventilation in heat balance)
+  const useIecNatX = natOn && sbNatModel === 'iec';
+  const Ae_total = useIecNatX ? Ae * natX : Ae;
   const Ao_top_m2 = openTop_cm2 * 1e-4;
   const Ao_bot_m2 = openBot_cm2 * 1e-4;
   const h_eff_m = natOn ? (parseFloat(document.getElementById('sb-open-heff')?.value) || 1000) / 1000 : 0;
@@ -516,22 +532,30 @@ function sbCalculate() {
   const forceOn = document.getElementById('sb-force-on').checked;
   const Q_fan = forceOn ? (parseFloat(document.getElementById('sb-airflow').value) || 0) / 3600 : 0;
 
-  // Iterative heat balance: k·Ae·ΔT^1.245 + cp·ρ·Q_total(ΔT)·ΔT = Pt
+  // Heat balance — two branches depending on ventilation model:
+  //
+  //  IEC 60890 §7.2 natX mode: ventilation already absorbed into Ae_total = natX × Ae.
+  //    → simple: ΔT = (Pt / (k × Ae_total))^(1/1.245)  [IEC 60890 §5 / §7.2]
+  //
+  //  Chimney model (non-normative, physics-based):
+  //    → iterative: k·Ae·ΔT^1.245 + cp·ρ·(Q_fan + Q_ch(ΔT))·ΔT = Pt
   let dT = 0, iterations = [];
-  const hasVentilation = Q_fan > 0 || Ao_top_m2 > 0 || Ao_bot_m2 > 0;
+  const hasChimneyVent = !useIecNatX && (Q_fan > 0 || Ao_top_m2 > 0 || Ao_bot_m2 > 0);
 
   if (Pt <= 0) {
     dT = 0;
-  } else if (!hasVentilation || Ae <= 0 || k <= 0) {
-    dT = (k > 0 && Ae > 0) ? Math.pow(Pt / (k * Ae), 1 / 1.245) : 0;
+  } else if (!hasChimneyVent || Ae_total <= 0 || k <= 0) {
+    // Covers: IEC natX mode (natX already in Ae_total), no ventilation, or invalid params
+    dT = (k > 0 && Ae_total > 0) ? Math.pow(Pt / (k * Ae_total), 1 / 1.245) : 0;
   } else {
-    dT = Math.pow(Pt / (k * Ae), 1 / 1.245);
+    // Chimney model — iterate Q_ch(ΔT) until convergence
+    dT = Math.pow(Pt / (k * Ae_total), 1 / 1.245);
     for (let iter = 1; iter <= 40; iter++) {
       const dT_in = dT;
       const Q_ch = sbChimneyFlow(Ao_top_m2, Ao_bot_m2, h_eff_m, dT_in, Ta);
       const Q_total = Q_fan + Q_ch;
       const dT_out = sbBisect(
-        x => k * Ae * Math.pow(x, 1.245) + CP_AIR * RHO_AIR * Q_total * x - Pt,
+        x => k * Ae_total * Math.pow(x, 1.245) + CP_AIR * RHO_AIR * Q_total * x - Pt,
         0.01, 300
       );
       const delta = Math.abs(dT_out - dT_in);
@@ -542,11 +566,11 @@ function sbCalculate() {
     }
   }
 
-  const Q_chimney = sbChimneyFlow(Ao_top_m2, Ao_bot_m2, h_eff_m, dT, Ta);
+  const Q_chimney = useIecNatX ? 0 : sbChimneyFlow(Ao_top_m2, Ao_bot_m2, h_eff_m, dT, Ta);
 
   _sbShowResults({ P_cables, P_devices, Pt, Ae, natX, natRatio, Ao_m2, Ae_total, dT, Ta,
     k, K_diss: null, Q: Q_fan, h_mm: h, w_mm: w, d_mm: d, mounting, natOn, forceOn, openTop_cm2, openBot_cm2,
-    iterations, Ao_top_m2, Ao_bot_m2, h_eff_m, Q_chimney, Q_fan });
+    iterations, Ao_top_m2, Ao_bot_m2, h_eff_m, Q_chimney, Q_fan, natModel: sbNatModel, useIecNatX });
 }
 
 function _sbShowResults(r) {
@@ -646,9 +670,14 @@ function _sbBuildSteps(r, dT, Ti) {
     : `Ae = 0.7 × (2·h·d + 2·h·b + b·d)  [free-standing — IEC 60890 §4]`;
   const term2 = mounting === 'wall' ? hm * wm : 2 * hm * wm;
   {
+    const { natModel: nm, useIecNatX: uin } = r;
     let aeStep = `${step++}. Effective cooling surface:\n   ${fmla}\n   h=${hm}m, b=${wm}m, d=${dm}m\n   Ae = 0.7 × (${(2*hm*dm).toFixed(4)} + ${term2.toFixed(4)} + ${(wm*dm).toFixed(4)}) = ${Ae.toFixed(4)} m²`;
     if (natOn && Ao_m2 > 0) {
-      aeStep += `\n   IEC 60890 §7.2 Fig. 1 reference: Ao/Ae ratio = ${natRatio.toFixed(5)} → x = ${natX.toFixed(4)}\n   (informational — chimney flow model used for ΔT calculation)`;
+      if (uin) {
+        aeStep += `\n   IEC 60890 §7.2 normative natX method: Ao/Ae = ${natRatio.toFixed(5)} → natX = ${natX.toFixed(4)}\n   Ae_eff = natX × Ae = ${natX.toFixed(4)} × ${Ae.toFixed(4)} = ${Ae_total.toFixed(4)} m²  [IEC 60890 §7.2 normative]`;
+      } else {
+        aeStep += `\n   IEC 60890 §7.2 Fig. 1 reference: Ao/Ae = ${natRatio.toFixed(5)} → natX = ${natX.toFixed(4)} (informational)\n   Chimney-flow model used for ΔT — Ae_total = ${Ae_total.toFixed(4)} m²`;
+      }
     }
     lines.push(aeStep);
   }
@@ -702,7 +731,7 @@ function _sbBuildSteps(r, dT, Ti) {
       lines.push(iterStep);
     } else {
       // No fan, no openings — power law only
-      lines.push(`${step++}. Temperature rise — natural convection only (IEC 60890 §5 power law):\n   k·Ae·ΔT^1.245 = Pt  →  ΔT = (Pt / (k·Ae))^(1/1.245)\n   ΔT = (${Pt.toFixed(2)} / (${k} × ${Ae.toFixed(4)}))^0.8032 = ${dT.toFixed(2)} K`);
+      lines.push(`${step++}. Temperature rise — natural convection (IEC 60890 §5 power law):\n   k·Ae_eff·ΔT^1.245 = Pt  →  ΔT = (Pt / (k·Ae_eff))^(1/1.245)\n   ΔT = (${Pt.toFixed(2)} / (${k} × ${Ae_total.toFixed(4)}))^0.8032 = ${dT.toFixed(2)} K`);
     }
   } else {
     lines.push(`${step++}. Temperature rise (manual dissipation):\n   ΔT = Pt / K_diss = ${Pt.toFixed(2)} / ${K_diss} = ${dT.toFixed(2)} K`);

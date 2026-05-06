@@ -306,6 +306,9 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--on-surf);m
 }
 .btn-primary:active{filter:brightness(.95)}
 .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none;filter:none}
+/* Required-field highlight (fuse I²t) */
+.input-required{border-color:var(--err)!important;box-shadow:0 0 0 2px rgba(200,0,0,.18)!important}
+.input-required::placeholder{color:var(--err);opacity:.75}
 .err-box{
   background:rgba(147,0,10,.25);color:var(--err);
   border:1px solid rgba(255,180,171,.3);border-radius:var(--r-md);

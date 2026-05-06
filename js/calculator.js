@@ -137,8 +137,12 @@ function calculate() {
     // Get clearing time from sc.js form
     const discTimeEl = document.getElementById('sc-disc-time');
     const t_s = discTimeEl ? parseFloat(discTimeEl.value) : 0.4; // default 0.4s for final circuits
-    // Use copper k_adi by default (from MATERIAL.cu.k_adi = 115)
-    const k = MATERIAL.cu.k_adi;
+    // Select k per IEC 60364-5-54 Table 54.3 based on max conductor temperature:
+    //   Tmax ≤ 70 °C → PVC insulation → k = 115 (Cu) / 76 (Al)
+    //   Tmax ≤ 90 °C → XLPE/EPR insulation → k = 143 (Cu) / 94 (Al)
+    //   Above 90 °C → use XLPE value conservatively (most common high-temp insulation)
+    const mat = MATERIAL.cu; // Analytical tab has no material selector; defaults to Cu
+    const k = Tm <= 70 ? mat.k_pvc : mat.k_xlpe;
     
     if (I_fault_A > 0 && t_s > 0) {
       const peAdiabaticRaw = calcPeAdiabatic(I_fault_A, t_s, k);

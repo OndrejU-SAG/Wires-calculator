@@ -87,7 +87,9 @@ Calculates temperature rise in electrical switchgear and controlgear assemblies 
 - **Ventilation modeling**:
   - Natural convection (painted steel: 5.5 W/m²·K per IEC 61439 §10.10)
   - Forced ventilation with fan airflow presets
-  - Chimney effect airflow per IEC 60890 §7.2
+  - **Two natural-ventilation calculation models** (selectable when openings are defined):
+    - *IEC 60890 §7.2 normative* — tabular `natX × Ae` method per the standard (for compliant reports)
+    - *Dynamic chimney model* — iterative Q(ΔT) physics model (more accurate, non-normative)
 - **Rittal TS8 enclosure sizes** — Pre-configured dropdown
 - **Temperature measurement points** per IEC 61439-1 §10.10 Table 6:
   - External manual operators: ΔT max 15K
@@ -126,7 +128,7 @@ Comprehensive short-circuit current calculation with protection device verificat
 - **Symmetrical short-circuit currents**: Ik3 (3-phase), Ik2 (2-phase), Ik1 (1-phase/earth fault)
 - **Asymmetrical peak current**: `I_peak = κ × √2 × I_k"` (κ = 1.7-1.95 depending on X/R ratio)
 - **Cable impedance contribution**: R_cable = ρ × L / S × (1 + y_s), X_cable = x' × L
-- **X/R ratio analysis** with typical values (0.5-2 for LV transformers)
+- **X/R ratio analysis** with typical values (4–8 for LV transformers per IEC 60909-0 Table 3); default = 4
 - **Protection device verification**:
   - Circuit breakers: B, C, D, K, Z curves per IEC 60898 / IEC 60947-2
   - Fuses: gG type per IEC 60269-2
@@ -182,7 +184,7 @@ Complete cable sizing considering:
 - IEC 60364-5-52 Annex B correction factors:
   - Ca: Ambient temperature factor (Table B.52.14)
   - Cg: Grouping factor (Table B.52.17)
-  - Crho: Soil thermal resistivity factor (Table B.52.20)
+  - **Crho: Soil thermal resistivity factor (Table B.52.20)** — selectable via dropdown (0.5–3.0 K·m/W) when installation method is Direct Burial (D1); reference 2.5 K·m/W = Crho 1.00
   - Ku: Utilization factor
 - Thermal withstand verification
 - Voltage dip assessment with criteria:
@@ -227,8 +229,8 @@ Calculates fill percentage for cable trays and conduits with comprehensive stand
 | Single cable | 40% | 53% |
 | Two cables | 40% | 31% |
 | 3+ power cables | 40% | 50% |
-| 3+ signal cables | 40% | 50% |
-| 3+ mixed cables | 40% | 50% |
+| 3+ signal / communications cables | 40% | **75%** (NEC 392.22 — dedicated signal trays) |
+| 3+ mixed cables (power + signal) | 40% | 50% |
 
 **Key Features:**
 - Cable definition by **outer diameter (OD)** or **standard cross-section (mm²)**
@@ -281,14 +283,15 @@ Fill (%) = (Total cable cross-sectional area / Tray or conduit area) × 100
 |---|---|---|
 | ρ₂₀ (Ω·mm²/m) | 0.017241 | 0.028264 |
 | α (K⁻¹) | 0.00393 | 0.00403 |
-| k_adi (A·s½/mm²) | 115 | 76 |
+| k_pvc  — PVC 70 °C (A·s½/mm²) | **115** | **76** |
+| k_xlpe — XLPE/EPR 90 °C (A·s½/mm²) | **143** | **94** |
 
 **Temperature-corrected resistivity:**
 ```
 ρ(T) = ρ₂₀ × (1 + α × (T - 20))
 ```
 
-**Note:** k_adi = adiabatic short-circuit withstand factor per IEC 60364-5-54.
+**Note:** k values are per **IEC 60364-5-54 Table 54.3** (adiabatic short-circuit withstand). The correct k is selected automatically based on the conductor's rated maximum temperature (Tmax ≤ 70 °C → PVC k; Tmax > 70 °C → XLPE k).
 
 ---
 
@@ -363,7 +366,9 @@ S_min = √(I_fault² × t) / k
 Where:
 - I_fault = fault current (A)
 - t = clearing time (s)
-- k = adiabatic factor from Table 54.1 (115 for Cu, 76 for Al at 70°C→160°C)
+- k = adiabatic factor from IEC 60364-5-54 Table 54.3:
+  - PVC 70 °C:  Cu = 115, Al = 76  (70 °C → 160 °C)
+  - XLPE 90 °C: Cu = 143, Al = 94  (90 °C → 250 °C)
 
 ---
 
@@ -404,7 +409,7 @@ The calculator is a **Progressive Web Application (PWA)** compatible with:
 Wires-calculator-main/
 ├── index.html          # Main HTML file with tab interface
 ├── README.md           # This documentation
-├── report.md           # Development report
+├── FEAT.md             # Feature backlog (post-audit improvements)
 ├── css/
 │   └── styles.css      # Complete styling (16KB+)
 │
@@ -554,13 +559,15 @@ All modules support **PDF export** with:
 
 ### Short-Circuit Calculator
 - For **TT networks**: RCD protection generally required per IEC 60364-4-41 §411.5
-- X/R ratio typically 0.5-2 for LV transformers
+- X/R ratio typically **4–8 for LV transformers** (IEC 60909-0 Table 3); default = 4
 - Cable reactance: 0.08 mΩ/m (single-core), 0.07 mΩ/m (multi-core)
 - **DC calculations**: Verify SMPS current-limiting behavior with manufacturer
 
 ### Switchboard Temperature Rise
 - For **Rittal TS8** enclosures: Use pre-configured sizes for accurate cooling surface
-- **Natural ventilation**: Opening areas affect chimney effect airflow
+- **Natural ventilation**: Choose between two models when openings are defined:
+  - *IEC 60890 §7.2 normative* — use for calculation reports submitted to inspection bodies
+  - *Dynamic chimney model* — use for in-house engineering (physically more accurate)
 - **Forced ventilation**: Fan airflow rates significantly increase heat dissipation
 - Check **measurement point limits** per IEC 61439-1 Table 6
 
@@ -662,5 +669,5 @@ For issues, questions, or contributions:
 
 ---
 
-*Last updated: April 2026*
+*Last updated: May 2026 — audit fixes applied (IEC 60364-5-54 k values, fuse I²t validation, switchboard ventilation model toggle, motor burial Crho, NEC signal fill limit, X/R default)*
 *Version: Comprehensive electrical engineering calculator with 6 integrated modules*

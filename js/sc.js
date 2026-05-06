@@ -71,7 +71,7 @@ let scNetworkType = 'tns';   // 'tns' | 'tnc' | 'tt'
 let _scDtvState   = null;    // { Z1_min, U0, In, isFuse, discTime, curveSel }
 let scVoltPreset  = 'ac3';   // 'ac1' = 1-phase 230 V | 'ac3' = 3-phase 400 V | 'custom' = U_LL input
 let scCondTemp    = 70;      // °C — conductor temperature for min Ik (protection check)
-let scSourceXR    = 1.0;     // X/R ratio of source impedance
+let scSourceXR    = 4.0;     // X/R ratio of source impedance (IEC 60909-0 Table 3: typical LV transformer 4–8)
 let scCableXpm    = 0.08;    // cable reactance x' [mΩ/m] typical: 0.08 single-core, 0.07 multi-core
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -289,6 +289,24 @@ function scOnDevTypeChange() {
   const discInner  = document.getElementById('sc-disc-time-inner');
   if (curveInner) curveInner.style.display = type === 'fuse' ? 'none' : '';
   if (discInner)  discInner.style.display  = type === 'fuse' ? '' : 'none';
+
+  // Fuse I²t is mandatory — clear MCB default when switching to fuse so the
+  // user is forced to enter a datasheet value (gG fuse I²t cannot be estimated).
+  const it2Input = document.getElementById('sc-it2');
+  if (it2Input) {
+    if (type === 'fuse') {
+      // Clear default MCB value; field now required
+      if (it2Input.value === '30000' || it2Input.value === '') it2Input.value = '';
+      it2Input.placeholder = T[lang]?.scIt2FusePh || 'Required — from datasheet';
+      it2Input.classList.add('input-required');
+    } else {
+      // Restore MCB sensible default
+      if (it2Input.value === '') it2Input.value = '30000';
+      it2Input.placeholder = '';
+      it2Input.classList.remove('input-required');
+    }
+  }
+
   scUpdateTripHint();
   scUpdateIt2Hint();
 }
@@ -1112,7 +1130,13 @@ function scCalculate() {
 
   // ─── IEC 60364-4-43 §434.5 Cable Thermal Withstand ──────────────────────
   const insulType = (document.getElementById('sc-insul')?.value || 'pvc');
-  const It2_input = parseFloat(document.getElementById('sc-it2')?.value) || 30000;
+  const it2Raw = document.getElementById('sc-it2')?.value;
+  // For fuses, I²t MUST come from a manufacturer datasheet — there is no valid default.
+  if (devType === 'fuse' && (it2Raw === '' || it2Raw == null || isNaN(parseFloat(it2Raw)))) {
+    return fail(T[lang]?.scErrIt2Fuse ||
+      'I²t let-through is required for fuse thermal-withstand check. Enter the value from the manufacturer datasheet.');
+  }
+  const It2_input = parseFloat(it2Raw) || 30000;
   let k_thw;
   if (insulType === 'custom') {
     k_thw = parseFloat(document.getElementById('sc-insul-k')?.value) || 115;
