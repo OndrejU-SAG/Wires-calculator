@@ -370,7 +370,7 @@ Installation: ${instLabel}
 Ref: IEC 60364-5-52 §G.52.2 + Annex B (Tables B.52.14, B.52.17${instMethod === 'burial' ? ', B.52.20' : ''})
 ────────────────────────────────────────────────────────────────────
 1. Rated current
-   In = (Pn * 1000) / (${phases === 'ac3' ? 'sqrt(3) * Un' : 'Un'} * cos(phi_n) * eta)
+   In = (Pn * 1000) / (${phases === 'ac3' ? 'sqrt(3) * Un' : 'Un'} * cos(phi_n) * eta)  [IEC 60034-1 §7.3]
    In = (${Pn} * 1000) / (${InFactor.toFixed(4)} * ${Un} * ${cosN} * ${eta})
    In = ${In.toFixed(3)} A
 
@@ -379,7 +379,7 @@ Ref: IEC 60364-5-52 §G.52.2 + Annex B (Tables B.52.14, B.52.17${instMethod === 
    sin(phi_n)     = sqrt(1 - ${cosN}^2) = ${sinN.toFixed(4)}
    sin(phi_start) = sqrt(1 - ${cosStart}^2) = ${sinStart.toFixed(4)}
 
-3. Conductor resistivity  rho(theta) = rho20 * (1 + alpha * (theta - 20))
+3. Conductor resistivity  rho(theta) = rho20 * (1 + alpha * (theta - 20))  [IEC 60228 Annex B]
    rho_cold (20 °C — cold cable, starting transient):
      rho_cold = ${rho_cold.toFixed(6)} Ohm*mm^2/m  [used for dU_start]
    rho_run  (${Tcable} °C — cable operating temperature):
@@ -434,7 +434,7 @@ ${instMethod === 'burial' ? `
       Xcable = Xkm * L / 1000 = ${Xkm} * ${L} / 1000 = ${Xcable.toFixed(6)} Ohm
 
    c) Running voltage drop  (rho_run, cos phi_n = ${cosN}, sin phi_n = ${sinN.toFixed(4)})
-      dU_run = ${vdFactor.toFixed(4)} * In * (Rcable_run * cos phi_n + Xcable * sin phi_n)
+      dU_run = ${vdFactor.toFixed(4)} * In * (Rcable_run * cos phi_n + Xcable * sin phi_n)  [IEC 60364-5-52 §G.52.2]
              = ${vdFactor.toFixed(4)} * ${In.toFixed(3)} * (${Rcable_run.toFixed(6)} * ${cosN} + ${Xcable.toFixed(6)} * ${sinN.toFixed(4)})
              = ${dU_run.toFixed(3)} V
       dU_run% = ${dU_run.toFixed(3)} / ${Un} * 100 = ${dU_run_pct.toFixed(3)} %
@@ -446,7 +446,7 @@ ${instMethod === 'burial' ? `
     } else {
       stepsText +=
 `
-      dU_start = ${vdFactor.toFixed(4)} * Istart * (Rcable_start * cos phi_start + Xcable * sin phi_start)
+      dU_start = ${vdFactor.toFixed(4)} * Istart * (Rcable_start * cos phi_start + Xcable * sin phi_start)  [IEC 60364-5-52 §G.52.2]
                = ${vdFactor.toFixed(4)} * ${Istart.toFixed(3)} * (${Rcable_start.toFixed(6)} * ${cosStart} + ${Xcable.toFixed(6)} * ${sinStart.toFixed(4)})
                = ${dU_start.toFixed(3)} V
       dU_start% = ${dU_start.toFixed(3)} / ${Un} * 100 = ${dU_start_pct.toFixed(3)} %

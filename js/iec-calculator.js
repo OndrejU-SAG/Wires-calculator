@@ -224,12 +224,12 @@ function iecGetCg(group, method) {
 function iecVoltageDrop({system, I, R, X, cosphi, L}) {
   const sinphi = Math.sin(Math.acos(Math.min(Math.max(cosphi, 0), 1)));
   if (system === 'dc') {
-    return { V: I * R * 2 * L, formula: 'ΔU = 2 · I · R · L' };
+    return { V: I * R * 2 * L, formula: 'ΔU = 2 · I · R · L  [IEC 60364-5-52 §G.52.2]' };
   }
   const k = system === '1ph' ? 2 : Math.sqrt(3);
   const formula = system === '1ph'
-    ? 'ΔU = 2 · I · (R·cosφ + X·sinφ) · L'
-    : 'ΔU = √3 · I · (R·cosφ + X·sinφ) · L';
+    ? 'ΔU = 2 · I · (R·cosφ + X·sinφ) · L  [IEC 60364-5-52 §G.52.2]'
+    : 'ΔU = √3 · I · (R·cosφ + X·sinφ) · L  [IEC 60364-5-52 §G.52.2]';
   return { V: k * I * (R * cosphi + X * sinphi) * L, formula };
 }
 
@@ -510,17 +510,17 @@ function iecBuildStepsText(r) {
   out.push(`   ${_tt('iecLblGroup', 'Grouping')}: ${r.group} ${_tt('iecCircuitsWord', 'circuit(s)')}`);
   out.push('');
   out.push('2) ' + _tt('iecStep2', 'Correction factors  (IEC 60364-5-52 Annex B)'));
-  out.push(`   Ca = f(Ta, ins) = ${r.Ca.toFixed(3)}`);
-  out.push(`   Cg = f(circuits) = ${r.Cg.toFixed(3)}`);
+  out.push(`   Ca = f(Ta, ins) = ${r.Ca.toFixed(3)}  [IEC 60364-5-52 Tab. B.52.14]`);
+  out.push(`   Cg = f(circuits) = ${r.Cg.toFixed(3)}  [IEC 60364-5-52 Tab. B.52.17]`);
   out.push(`   Ctot = Ca · Cg = ${r.Ctot.toFixed(3)}`);
   out.push('');
   out.push('3) ' + _tt('iecStep3', 'Required base ampacity'));
-  out.push(`   Iz_required = Ib / Ctot = ${r.I} / ${r.Ctot.toFixed(3)} = ${(r.I / r.Ctot).toFixed(2)} A`);
+  out.push(`   Iz_required = Ib / Ctot = ${r.I} / ${r.Ctot.toFixed(3)} = ${(r.I / r.Ctot).toFixed(2)} A  [IEC 60364-5-52 §523.1]`);
   out.push(`   ${_tt('iecStep3a', 'First standard size with Iz_base >= Iz_required')}: ${iecFmtMm2(r.sizeAmpFirst)} mm²`);
   out.push(`     Iz_base = ${r.Iz_base.toFixed(1)} A   →   Iz_corr = ${r.Iz_corr.toFixed(1)} A`);
   out.push('');
   out.push('4) ' + _tt('iecStep4', 'Voltage-drop check  (IEC 60364-5-52 §G.52.2)'));
-  out.push(`   rho(Tmax) = rho20 · (1 + alpha·(${r.Tmax}-20)) = ${r.rho.toFixed(5)} Ohm·mm2/m`);
+  out.push(`   rho(Tmax) = rho20 · (1 + alpha·(${r.Tmax}-20)) = ${r.rho.toFixed(5)} Ohm·mm2/m  [IEC 60228 Annex B]`);
   out.push(`   ${r.vd.formula}`);
   if (r.vdIters.length === 1) {
     out.push(`   At ${iecFmtMm2(r.finalSize)} mm²: dU = ${r.vd.V.toFixed(3)} V  (${r.vd.pct.toFixed(3)} %) — ${r.vd.pct <= r.maxVdPct ? _tt('iecPass','PASS') : _tt('iecFail','FAIL')}`);
@@ -531,7 +531,7 @@ function iecBuildStepsText(r) {
   }
   out.push('');
   out.push('5) ' + _tt('iecStep5', 'Power loss'));
-  out.push(`   Ploss = Ib² · (rho/A) · n · L = ${r.I}² · (${r.rho.toFixed(5)}/${iecFmtMm2(r.finalSize)}) · ${r.nCond} · ${r.L} = ${r.Ploss.toFixed(2)} W`);
+  out.push(`   Ploss = Ib² · (rho/A) · n · L = ${r.I}² · (${r.rho.toFixed(5)}/${iecFmtMm2(r.finalSize)}) · ${r.nCond} · ${r.L} = ${r.Ploss.toFixed(2)} W  [IEC 60364-5-52 §G.52.2]`);
   out.push('');
   out.push('6) ' + _tt('iecStep6', 'PE conductor'));
   out.push(`   ${r.peCalc}`);

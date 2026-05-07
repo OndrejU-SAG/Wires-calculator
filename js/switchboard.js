@@ -714,7 +714,7 @@ function _sbBuildSteps(r, dT, Ti) {
       // Fan and/or openings — show iteration table
       const Q_fan_h = (Q_fan * 3600).toFixed(1);
       let iterStep = `${step++}. Temperature rise — iterative heat balance (IEC 60890 §5 + chimney flow):`;
-      iterStep += `\n   k·Ae·ΔT^1.245 + cp·ρ·Q_total(ΔT)·ΔT = Pt`;
+      iterStep += `\n   k·Ae·ΔT^1.245 + cp·ρ·Q_total(ΔT)·ΔT = Pt  [IEC 60890 §5]`;
       iterStep += `\n   k = ${k} W/(m²·K), Ae = ${Ae.toFixed(4)} m², cp = ${CP_AIR} J/(kg·K), ρ = ${RHO_AIR} kg/m³`;
       if (Q_fan > 0) iterStep += `\n   Q_fan = ${Q_fan_h} m³/h = ${Q_fan.toFixed(5)} m³/s (constant)`;
       iterStep += `\n\n   iter |  ΔT_in [K] | Q_ch [m³/h] | Q_tot [m³/h] | ΔT_out [K] |   |Δ| [K]`;
@@ -733,13 +733,13 @@ function _sbBuildSteps(r, dT, Ti) {
       lines.push(iterStep);
     } else {
       // No fan, no openings — power law only
-      lines.push(`${step++}. Temperature rise — natural convection (IEC 60890 §5 power law):\n   k·Ae_eff·ΔT^1.245 = Pt  →  ΔT = (Pt / (k·Ae_eff))^(1/1.245)\n   ΔT = (${Pt.toFixed(2)} / (${k} × ${Ae_total.toFixed(4)}))^0.8032 = ${dT.toFixed(2)} K`);
+      lines.push(`${step++}. Temperature rise — natural convection (IEC 60890 §5 power law):\n   k·Ae_eff·ΔT^1.245 = Pt  →  ΔT = (Pt / (k·Ae_eff))^(1/1.245)  [IEC 60890 §5]\n   ΔT = (${Pt.toFixed(2)} / (${k} × ${Ae_total.toFixed(4)}))^0.8032 = ${dT.toFixed(2)} K`);
     }
   } else {
-    lines.push(`${step++}. Temperature rise (manual dissipation):\n   ΔT = Pt / K_diss = ${Pt.toFixed(2)} / ${K_diss} = ${dT.toFixed(2)} K`);
+    lines.push(`${step++}. Temperature rise (manual dissipation):\n   ΔT = Pt / K_diss = ${Pt.toFixed(2)} / ${K_diss} = ${dT.toFixed(2)} K  [IEC 60890 §5]`);
   }
 
-  lines.push(`${step++}. Internal temperature:\n   Ti = Ta + ΔT = ${Ta} + ${dT.toFixed(2)} = ${Ti.toFixed(2)} °C`);
+  lines.push(`${step++}. Internal temperature:\n   Ti = Ta + ΔT = ${Ta} + ${dT.toFixed(2)} = ${Ti.toFixed(2)} °C  [IEC 60890 §5]`);
 
   const measPoint = document.getElementById('sb-meas-point')?.value || 'enclosure';
   const lim = SB_DT_LIMITS[measPoint] ?? SB_DT_LIMITS['enclosure'];
