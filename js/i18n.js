@@ -584,7 +584,7 @@ const T = {
     iecPdfCorrection: 'Korrekturen & Auslegung',
     iecPdfSteps: 'Berechnungsablauf (Schritt für Schritt)',
     /* ── Bus Bar Sizing (IEC 61439) ── */
-    tab1: '🔵 Sammelschiene',
+    tab1: 'Sammelschiene',
     bbConfigHdr: '📐 Sammelschienen-Konfiguration',
     bbMaterial: 'Material',
     bbStdSize: 'Standardgröße (b × a)',
@@ -640,6 +640,14 @@ const T = {
     ttBbTsc: 'Dauer des Kurzschlussfehlers. IEC 61439-1 §10.11 beschränkt Icw auf maximal 3 s.',
     ttBbLsupp: 'Abstand zwischen Sammelschienen-Isolatoren oder Haltepunkten. Bestimmt die Biegemoment-Prüfung.',
     ttBbDcc: 'Mittenabstand zwischen benachbarten Phasen. Beeinflusst die elektromagnetische Kraft.',
+    bbSubSiz: 'Dimensionierung', bbSubVerif: '✔ Nachweis',
+    bbSizOptHdr: '🔍 Dimensionierungsoptionen', bbMaxPar: 'Max. Schienen pro Phase',
+    bbMaxParHint: 'Algorithmus probiert zuerst 1 Schiene, fügt parallele nur bei Bedarf hinzu',
+    bbSizBtn: '🔍 Optimale Schienengröße finden', bbSizResHdr: '📐 Dimensionierungsergebnis',
+    bbSizUseBtn: '→ Im Nachweis verwenden', bbSizCopied: 'Größe kopiert — Berechnen drücken.',
+    bbSizRecommend: '★ Empfohlene Größe', bbSizCandHdr: 'Alle geeigneten Kandidaten',
+    bbNoSizeFound: 'Keine Standardgröße gefunden — max. parallele Schienen erhöhen.',
+    bbVerifSelHdr: '📐 Schienenauswahl',
   },
   cze: {
     appTitle: 'Elektrická kalkulačka',
@@ -1226,7 +1234,7 @@ const T = {
     iecPdfCorrection: 'Korekce a výsledek',
     iecPdfSteps: 'Postup výpočtu (krok za krokem)',
     /* ── Bus Bar Sizing (IEC 61439) ── */
-    tab1: '🔵 Přípojnice',
+    tab1: 'Přípojnice',
     bbConfigHdr: '📐 Konfigurace přípojnice',
     bbMaterial: 'Materiál',
     bbStdSize: 'Standardní rozměr (š × t)',
@@ -1282,6 +1290,14 @@ const T = {
     ttBbTsc: 'Doba trvání zkratové poruchy. IEC 61439-1 §10.11 omezuje Icw na max. 3 s.',
     ttBbLsupp: 'Vzdálenost mezi izolátory přípojnice. Určuje kontrolu ohybového momentu.',
     ttBbDcc: 'Osová vzdálenost sousedních fází. Ovlivňuje elektromagnetickou sílu.',
+    bbSubSiz: 'Dimenzování', bbSubVerif: '✔ Ověření',
+    bbSizOptHdr: '🔍 Možnosti dimenzování', bbMaxPar: 'Max. přípojnic na fázi',
+    bbMaxParHint: 'Algoritmus zkouší nejprve 1 přípojnici, paralelní přidává jen v případě potřeby',
+    bbSizBtn: '🔍 Najít optimální rozměr', bbSizResHdr: '📐 Výsledky dimenzování',
+    bbSizUseBtn: '→ Použít v ověření', bbSizCopied: 'Rozměr zkopírován — stiskněte Vypočítat.',
+    bbSizRecommend: '★ Doporučený rozměr', bbSizCandHdr: 'Všechny vyhovující varianty',
+    bbNoSizeFound: 'Žádný standardní rozměr nenalezen — zvyšte max. paralelní přípojnice.',
+    bbVerifSelHdr: '📐 Výběr přípojnice',
   },
   eng: {
     appTitle: 'Electrical Calculator',
@@ -1868,7 +1884,7 @@ const T = {
     iecPdfCorrection: 'Corrections & Outcome',
     iecPdfSteps: 'Step-by-Step Calculation',
     /* ── Bus Bar Sizing (IEC 61439) ── */
-    tab1: '🔵 Bus Bar Sizing',
+    tab1: 'Bus Bar Sizing',
     bbConfigHdr: '📐 Busbar Configuration',
     bbMaterial: 'Material',
     bbStdSize: 'Quick-select standard size (w × t)',
@@ -1924,6 +1940,14 @@ const T = {
     ttBbTsc: 'Short-circuit fault duration. IEC 61439-1 §10.11 limits Icw to max 3 s.',
     ttBbLsupp: 'Distance between busbar support insulators. Determines the bending moment check.',
     ttBbDcc: 'Centre-to-centre spacing between adjacent phases. Determines electromagnetic force.',
+    bbSubSiz: 'Busbar Sizing', bbSubVerif: '✔ Sizing Verification',
+    bbSizOptHdr: '🔍 Sizing Options', bbMaxPar: 'Maximum bars per phase',
+    bbMaxParHint: 'Algorithm tries 1 bar first, adds parallel bars only if needed',
+    bbSizBtn: '🔍 Find Optimal Busbar Size', bbSizResHdr: '📐 Sizing Results',
+    bbSizUseBtn: '→ Use selected size in Verification', bbSizCopied: 'Size copied — press Calculate to verify.',
+    bbSizRecommend: '★ Recommended Size', bbSizCandHdr: 'All passing candidates',
+    bbNoSizeFound: 'No standard size found — increase max parallel bars or review mechanical parameters.',
+    bbVerifSelHdr: '📐 Busbar Selection',
   }
 };
 

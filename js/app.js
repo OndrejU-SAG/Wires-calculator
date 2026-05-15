@@ -138,24 +138,30 @@ function resetToDefaults() {
     }
 
     case 1: {
-      // Bus Bar Sizing — reset to defaults
+      // Bus Bar — reset shared inputs
       document.querySelector('[data-bb-mat="cu"]')?.click();
       document.querySelector('[data-bb-sys="ac3"]')?.click();
-      const _bbSel = document.getElementById('bb-std-size');
-      if (_bbSel) { _bbSel.value = '60,5'; _bbSel.dispatchEvent(new Event('change')); }
-      document.getElementById('bb-parallel').value = '1';
-      document.getElementById('bb-length').value   = 2;
-      document.getElementById('bb-inst').value     = 'flat_h';
       document.getElementById('bb-current').value  = 400;
       document.getElementById('bb-voltage').value  = 400;
       document.getElementById('bb-cosphi').value   = 0.85;
       document.getElementById('bb-tamb').value     = 35;
+      document.getElementById('bb-length').value   = 2;
       document.getElementById('bb-ik').value       = 10;
       document.getElementById('bb-tsc').value      = '1';
       document.getElementById('bb-kappa').value    = 2.2;
+      document.getElementById('bb-inst').value     = 'flat_h';
       document.getElementById('bb-lsupp').value    = 500;
       document.getElementById('bb-dcc').value      = 100;
+      // Sizing panel
+      document.getElementById('bb-maxpar').value   = '2';
+      { const _s = document.getElementById('bb-siz-res-card'); if (_s) _s.style.display = 'none'; }
+      // Verification panel
+      const _bbSel = document.getElementById('bb-std-size');
+      if (_bbSel) { _bbSel.value = '60,5'; _bbSel.dispatchEvent(new Event('change')); }
+      document.getElementById('bb-parallel').value = '1';
       { const _bbRes = document.getElementById('bb-res-card'); if (_bbRes) _bbRes.style.display = 'none'; }
+      // Show sizing sub-tab
+      if (typeof bbSwitchSub === 'function') bbSwitchSub('siz');
       break;
     }
 

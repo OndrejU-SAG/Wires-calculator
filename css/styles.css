@@ -770,6 +770,11 @@ option{background:var(--surf-2);color:var(--on-surf)}
   letter-spacing:.5px;margin-bottom:2px}
 .bb-kv-val{font-family:'Roboto Mono',monospace;font-weight:700;color:var(--pri);font-size:14px}
 
+/* ── Busbar sizing table ────────────────────────────────────────────────── */
+.bb-siz-row:hover{background:var(--surf-2)}
+.bb-siz-row-best td{font-weight:600}
+.bb-siz-row td{border-bottom:1px solid var(--out-var)}
+
 /* ── Rec-box sub-elements ──────────────────────────────────────────────── */
 .rec-box-icon{font-size:26px;flex-shrink:0;line-height:1}
 .rec-box-body{flex:1;min-width:0}

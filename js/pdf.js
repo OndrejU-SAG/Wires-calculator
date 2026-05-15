@@ -42,8 +42,19 @@ function pdfSafe(s) {
     '✓': 'OK',   '⚠': '(!)',  // check mark, warning
     '✗': 'X',                  // ballot X
     '✅': '[OK]', '❌': '[FAIL]', // emoji check/cross
-    // Box-drawing (used in busbar steps headers)
+    // Box-drawing
     '═': '=',    '─': '-',    '│': '|',
+    // Greek (additional)
+    'κ': 'kap',  'θ': 'theta','σ': 'sig', 'μ': 'mu',
+    'λ': 'lam',  'β': 'bet',  'γ': 'gam',
+    // Subscript digits (all > U+00FF)
+    '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4',
+    '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9',
+    // Superscript digits not in Latin-1 (⁴–⁹, ⁻, ⁺)
+    '⁰': '^0', '⁴': '^4', '⁵': '^5', '⁶': '^6',
+    '⁷': '^7', '⁸': '^8', '⁹': '^9', '⁻': '^-', '⁺': '^+',
+    // Math
+    '∞': 'inf', '≈': '~=', '≠': '!=',
   };
   return String(s).replace(/[\s\S]/g, c => {
     if (MAP[c] !== undefined) return MAP[c];

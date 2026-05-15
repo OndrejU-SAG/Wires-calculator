@@ -1,46 +1,41 @@
 /* =====================================================================
    BUS BAR SIZING CALCULATOR — IEC 61439-1:2011
-   Checks: temperature rise, short-circuit thermal withstand,
-   peak electromagnetic force + mechanical stress, deflection,
-   voltage drop.
+   Two modes:
+     • Busbar Sizing     — iterates standard sizes, finds smallest that passes
+     • Sizing Verification — checks a user-specified size against all clauses
    ===================================================================== */
 
 /* ── Material properties ─────────────────────────────────────────────── */
 const BB_MAT = {
   cu: {
-    rho20:   17.24e-9,  // Ω·m    (IEC 60228 / IEC 62317)
-    alpha20:  3.93e-3,  // K⁻¹
-    E_mod:   120e9,     // Pa     Young's modulus (hard-drawn Cu)
-    sigma_y: 150e6,     // Pa     0.2% proof stress (commercial hard-drawn)
-    k_sc:    141,       // A·s^½/mm²  (IEC 60364-4-43, bare Cu 20→300 °C)
+    rho20:   17.24e-9,  // Ohm·m
+    alpha20:  3.93e-3,  // K^-1
+    E_mod:   120e9,     // Pa
+    sigma_y: 150e6,     // Pa
+    k_sc:    141,       // A·s^0.5/mm^2  (IEC 60364-4-43, bare Cu 20→300 °C)
     label:   'Cu',
   },
   al: {
     rho20:   28.3e-9,
     alpha20:  4.03e-3,
     E_mod:    70e9,
-    sigma_y:  70e6,     // Pa     conservative (soft alloy EN-AW 1350 / 1050A)
-    k_sc:     93,       // A·s^½/mm²
+    sigma_y:  70e6,
+    k_sc:     93,
     label:   'Al',
   },
 };
 
-/* ── Natural-convection + radiation h_eff [W/(m²·K)] ─────────────────── */
-const BB_H = {
-  edge:     12,   // on-edge, wide face vertical  — best convection
-  flat_v:   10,   // flat-vertical (wide face points sideways)
-  flat_h:    9,   // flat-horizontal (wide face on top)  — worst
-  enclosed:  6,   // sealed enclosure, no forced ventilation
-};
+/* ── h_eff [W/(m²·K)] by installation ───────────────────────────────── */
+const BB_H = { edge: 12, flat_v: 10, flat_h: 9, enclosed: 6 };
 
-/* ── Parallel-bar derating (mutual thermal coupling) ─────────────────── */
+/* ── Parallel-bar derating ───────────────────────────────────────────── */
 const BB_PAR = { 1: 1.00, 2: 0.90, 3: 0.83, 4: 0.80 };
 
-/* ── IEC 61439-1:2011 Table 5 ΔT limits ─────────────────────────────── */
-const BB_DT_BUSBAR   = 105;  // K  — internal bare busbar conductors
-const BB_DT_TERMINAL =  70;  // K  — terminals for external cables
+/* ── IEC 61439-1:2011 Table 5 limits ────────────────────────────────── */
+const BB_DT_BUSBAR   = 105;   // K — bare busbar conductors
+const BB_DT_TERMINAL =  70;   // K — terminals
 
-/* ── Standard busbar sizes [width mm, thickness mm] ──────────────────── */
+/* ── Standard cross-sections [w mm, t mm] ───────────────────────────── */
 const BB_SIZES = [
   [15,3],[20,3],[25,3],[30,3],[40,3],[50,3],
   [20,4],[25,4],[30,4],[40,4],[50,4],[60,4],
@@ -57,7 +52,7 @@ function initBusbar() {
   BB_SIZES.forEach(([w, t]) => {
     const o = document.createElement('option');
     o.value = `${w},${t}`;
-    o.textContent = `${w} × ${t} mm  (${w * t} mm²)`;
+    o.textContent = `${w} \xd7 ${t} mm  (${w * t} mm\xb2)`;
     sel.appendChild(o);
   });
   sel.value = '60,5';
@@ -73,6 +68,20 @@ function _bbApplyStdSize() {
   document.getElementById('bb-thick').value = t;
 }
 
+/* ── Sub-tab switching ────────────────────────────────────────────────── */
+function bbSwitchSub(which) {
+  const sizBtn   = document.getElementById('bb-sub-siz');
+  const verifBtn = document.getElementById('bb-sub-verif');
+  const sizPan   = document.getElementById('bb-siz-panel');
+  const verifPan = document.getElementById('bb-verif-panel');
+  if (!sizBtn || !sizPan) return;
+  const isSiz = (which === 'siz');
+  sizBtn.classList.toggle('active', isSiz);
+  verifBtn.classList.toggle('active', !isSiz);
+  sizPan.style.display   = isSiz ? '' : 'none';
+  verifPan.style.display = isSiz ? 'none' : '';
+}
+
 /* ── UI helpers ───────────────────────────────────────────────────────── */
 function bbSetMat(el, mat) {
   document.querySelectorAll('[data-bb-mat]').forEach(b =>
@@ -86,130 +95,86 @@ function bbSetSys(el, sys) {
   if (cpRow) cpRow.style.display = (sys === 'dc') ? 'none' : '';
 }
 
-/* ── Main calculation ─────────────────────────────────────────────────── */
-function bbCalculate() {
-
-  /* read active buttons */
-  const matEl = document.querySelector('[data-bb-mat].active') ||
-                document.querySelector('[data-bb-mat]');
-  const sysEl = document.querySelector('[data-bb-sys].active') ||
-                document.querySelector('[data-bb-sys]');
-  const matKey = matEl ? matEl.dataset.bbMat : 'cu';
-  const sysKey = sysEl ? sysEl.dataset.bbSys : 'ac3';
-  const M = BB_MAT[matKey];
-
-  const w     = parseFloat(document.getElementById('bb-width').value);     // mm
-  const t     = parseFloat(document.getElementById('bb-thick').value);     // mm
-  const n     = parseInt(document.getElementById('bb-parallel').value, 10);
-  const L     = parseFloat(document.getElementById('bb-length').value);    // m
-  const inst  = document.getElementById('bb-inst').value;
-  const In    = parseFloat(document.getElementById('bb-current').value);   // A
-  const Un    = parseFloat(document.getElementById('bb-voltage').value);   // V
-  const cosph = (sysKey === 'dc')
-                  ? 1
-                  : parseFloat(document.getElementById('bb-cosphi').value);
-  const Ta    = parseFloat(document.getElementById('bb-tamb').value);      // °C
-  const Ik    = parseFloat(document.getElementById('bb-ik').value);        // kA
-  const tsc   = parseFloat(document.getElementById('bb-tsc').value);       // s
-  const kap   = parseFloat(document.getElementById('bb-kappa').value);
-  const Ls    = parseFloat(document.getElementById('bb-lsupp').value);     // mm
-  const dcc   = parseFloat(document.getElementById('bb-dcc').value);       // mm
-
-  if ([w, t, n, L, In, Un, cosph, Ta, Ik, tsc, kap, Ls, dcc].some(v => isNaN(v) || v <= 0)) {
-    showToast(T[lang].bbErrInputs || 'Please fill all fields with positive values.');
-    return;
-  }
-
-  /* ── derived geometry ──────────────────────────────────────────────── */
+/* ── Pure calculation core ────────────────────────────────────────────── */
+/**
+ * @param {object} M        - material object from BB_MAT
+ * @param {string} sysKey   - 'ac3'|'ac1'|'dc'
+ * @param {number} w        - width mm
+ * @param {number} t        - thickness mm
+ * @param {number} n        - bars per phase
+ * @param {string} inst     - installation key
+ * @param {number} In       - nominal current A
+ * @param {number} Un       - nominal voltage V
+ * @param {number} cosph    - power factor (1 for DC)
+ * @param {number} Ta       - ambient °C
+ * @param {number} Ik_kA    - prospective fault current kA
+ * @param {number} tsc      - fault duration s
+ * @param {number} kap      - peak factor κ
+ * @param {number} Ls_mm    - support span mm
+ * @param {number} dcc_mm   - phase spacing mm
+ * @param {number} L_m      - bus length m (0 skips VD)
+ * @returns {object} all computed values + pass/fail booleans
+ */
+function _bbCalc(M, sysKey, w, t, n, inst, In, Un, cosph, Ta, Ik_kA, tsc, kap, Ls_mm, dcc_mm, L_m) {
   const A_mm2 = w * t;
   const A_m2  = A_mm2 * 1e-6;
   const P_mm  = 2 * (w + t);
-  const P_m   = P_mm  * 1e-3;
-  const Ls_m  = Ls  * 1e-3;
-  const dcc_m = dcc * 1e-3;
-  const Ik_A  = Ik  * 1000;
+  const P_m   = P_mm * 1e-3;
+  const Ls_m  = Ls_mm * 1e-3;
+  const dcc_m = dcc_mm * 1e-3;
+  const Ik_A  = Ik_kA * 1000;
   const h     = BB_H[inst] || 9;
 
-  /* ══════════════════════════════════════════════════════════════════════
-     CHECK 1 — Temperature rise & ampacity  (IEC 61439-1 §10.10 / Table 5)
-     Closed-form steady-state energy balance per unit length:
-       I² · ρ(θ) / A  =  h · P · ΔT
-       ΔT = I²·R₀ₘ / (HC − I²·α·ρ₂₀/A)
-     ══════════════════════════════════════════════════════════════════════ */
-  const R0_pm  = M.rho20 * (1 + M.alpha20 * (Ta - 20)) / A_m2;  // Ω/m at Ta
-  const HC     = h * P_m;                                          // W/(m·K)
-  const dR_dT  = M.rho20 * M.alpha20 / A_m2;                      // Ω/(m·K)
+  /* — Thermal balance ——————————————————————————————————————————————— */
+  const R0_pm  = M.rho20 * (1 + M.alpha20 * (Ta - 20)) / A_m2;
+  const HC     = h * P_m;
+  const dR_dT  = M.rho20 * M.alpha20 / A_m2;
   const I_bar  = In / n;
   const HC_net = HC - I_bar * I_bar * dR_dT;
-  const DeltaT = HC_net > 0 ? I_bar * I_bar * R0_pm / HC_net : Infinity;
+  const DeltaT   = HC_net > 0 ? I_bar * I_bar * R0_pm / HC_net : Infinity;
   const theta_op = Ta + DeltaT;
-
-  /* ampacity at each ΔT limit */
   const Iz_bar_bus  = Math.sqrt(HC * BB_DT_BUSBAR   / (R0_pm + dR_dT * BB_DT_BUSBAR));
   const Iz_bar_term = Math.sqrt(HC * BB_DT_TERMINAL  / (R0_pm + dR_dT * BB_DT_TERMINAL));
   const k_par        = BB_PAR[n] || 0.80;
   const Iz_tot_bus   = n * Iz_bar_bus  * k_par;
   const Iz_tot_term  = n * Iz_bar_term * k_par;
-
   const pass_dt      = isFinite(DeltaT) && DeltaT <= BB_DT_BUSBAR;
   const pass_term_dt = isFinite(DeltaT) && DeltaT <= BB_DT_TERMINAL;
   const pass_amp     = In <= Iz_tot_bus;
-  const amp_margin   = isFinite(Iz_tot_bus)
-                         ? (Iz_tot_bus - In) / Iz_tot_bus * 100
-                         : -999;
+  const amp_margin   = isFinite(Iz_tot_bus) ? (Iz_tot_bus - In) / Iz_tot_bus * 100 : -999;
 
-  /* ══════════════════════════════════════════════════════════════════════
-     CHECK 2 — Short-circuit thermal withstand  (IEC 61439-1 §10.11)
-     Adiabatic formula (IEC 60865-1 / IEC 60364-4-43):
-       S_min = Ik · √t / k  [mm²]
-     ══════════════════════════════════════════════════════════════════════ */
+  /* — Short-circuit thermal ————————————————————————————————————————— */
   const S_min   = Ik_A * Math.sqrt(tsc) / M.k_sc;
   const S_total = A_mm2 * n;
   const pass_sc = S_total >= S_min;
   const sc_marg = (S_total - S_min) / S_min * 100;
 
-  /* ══════════════════════════════════════════════════════════════════════
-     CHECK 3 — Peak electromagnetic force & mechanical withstand
-               (IEC 61439-1 §10.2 / IEC 60865-1)
-     f = (μ₀/2π) · I_pk² / d  =  2×10⁻⁷ · I_pk² / d  [N/m]
-     Beam: simply-supported, uniform distributed load
-       M_max = f·L²/8,  σ_max = M_max/Z
-     ══════════════════════════════════════════════════════════════════════ */
+  /* — Mechanical ——————————————————————————————————————————————————— */
   const Ipk  = kap * Math.SQRT2 * Ik_A;
-  const f_em = 2e-7 * Ipk * Ipk / dcc_m;   // N/m
-
-  /* Section modulus for bending in the horizontal (phase-spacing) direction */
+  const f_em = 2e-7 * Ipk * Ipk / dcc_m;
   const w_m = w * 1e-3, t_m = t * 1e-3;
   let I_bend, Z_bend;
   if (inst === 'edge') {
-    /* on-edge: wide face vertical → thin dimension resists horizontal force (WEAK) */
     I_bend = w_m * Math.pow(t_m, 3) / 12;
     Z_bend = w_m * Math.pow(t_m, 2) / 6;
   } else {
-    /* flat:  wide face horizontal → wide dimension resists horizontal force (STRONG) */
     I_bend = t_m * Math.pow(w_m, 3) / 12;
     Z_bend = t_m * Math.pow(w_m, 2) / 6;
   }
-
   const Mbend     = f_em * Ls_m * Ls_m / 8;
   const sigma_max = Mbend / Z_bend;
   const pass_mech = sigma_max <= M.sigma_y;
   const mech_marg = (M.sigma_y - sigma_max) / M.sigma_y * 100;
-
-  /* deflection — simply-supported beam, UDL */
   const delta_m   = 5 * f_em * Math.pow(Ls_m, 4) / (384 * M.E_mod * I_bend);
   const delta_lim = Ls_m / 200;
   const pass_defl = delta_m <= delta_lim;
   const defl_marg = (delta_lim - delta_m) / delta_lim * 100;
 
-  /* ══════════════════════════════════════════════════════════════════════
-     CHECK 4 — Voltage drop  (IEC 61439-1 §10.10.4 — informational)
-     No explicit numeric limit in IEC 61439; ≤1 % is common design practice.
-     ══════════════════════════════════════════════════════════════════════ */
+  /* — Voltage drop ————————————————————————————————————————————————— */
   const theta_mean = Ta + (isFinite(DeltaT) ? DeltaT / 2 : BB_DT_BUSBAR / 2);
   const rho_op = M.rho20 * (1 + M.alpha20 * (theta_mean - 20));
-  const R_bus  = rho_op * L / (A_m2 * n);
-  const X_bus  = 0.12e-3 * L;   /* ≈ 0.12 mΩ/m for typical LV busbar spacing at 50 Hz */
+  const R_bus  = (L_m > 0) ? rho_op * L_m / (A_m2 * n) : 0;
+  const X_bus  = (L_m > 0) ? 0.12e-3 * L_m : 0;
   const sinph  = Math.sqrt(Math.max(0, 1 - cosph * cosph));
   let dU_V;
   switch (sysKey) {
@@ -217,149 +182,329 @@ function bbCalculate() {
     case 'ac1': dU_V = 2 * In * (R_bus * cosph + X_bus * sinph); break;
     default:    dU_V = 2 * In * R_bus; break;
   }
-  const dU_pct = dU_V / Un * 100;
+  const dU_pct = (Un > 0 && L_m > 0) ? dU_V / Un * 100 : 0;
   const pass_vd = dU_pct <= 1.0;
 
-  /* overall structural pass (VD is informational only) */
   const overall_pass = pass_dt && pass_sc && pass_mech && pass_defl;
 
-  /* ── helpers ────────────────────────────────────────────────────────── */
-  const fmt  = (v, d = 2) => isFinite(v) ? v.toFixed(d) : '∞';
-  const fmtE = (v, d = 3) => v.toExponential(d);
-  const pf   = (p) => p ? '✅ PASS' : '❌ FAIL';
+  return {
+    A_mm2, A_m2, P_mm, P_m, Ls_m, dcc_m, Ik_A, h,
+    R0_pm, HC, dR_dT, I_bar, Iz_bar_bus, Iz_bar_term,
+    k_par, Iz_tot_bus, Iz_tot_term,
+    DeltaT, theta_op, pass_dt, pass_term_dt, pass_amp, amp_margin,
+    S_min, S_total, pass_sc, sc_marg,
+    Ipk, f_em, I_bend, Z_bend, Mbend, sigma_max,
+    delta_m, delta_lim, pass_mech, mech_marg, pass_defl, defl_marg,
+    theta_mean, rho_op, R_bus, X_bus, dU_V, dU_pct, pass_vd,
+    overall_pass,
+  };
+}
 
-  /* ── step-by-step report ─────────────────────────────────────────────── */
+/* ── Shared input reader ─────────────────────────────────────────────── */
+function _bbReadShared() {
+  const matEl  = document.querySelector('[data-bb-mat].active') || document.querySelector('[data-bb-mat]');
+  const sysEl  = document.querySelector('[data-bb-sys].active') || document.querySelector('[data-bb-sys]');
+  const matKey = matEl ? matEl.dataset.bbMat : 'cu';
+  const sysKey = sysEl ? sysEl.dataset.bbSys : 'ac3';
+  const M      = BB_MAT[matKey];
+  const sysIsDc = sysKey === 'dc';
+  return {
+    matKey, sysKey, M,
+    In:    parseFloat(document.getElementById('bb-current').value),
+    Un:    parseFloat(document.getElementById('bb-voltage').value),
+    cosph: sysIsDc ? 1 : parseFloat(document.getElementById('bb-cosphi').value),
+    Ta:    parseFloat(document.getElementById('bb-tamb').value),
+    Ik:    parseFloat(document.getElementById('bb-ik').value),
+    tsc:   parseFloat(document.getElementById('bb-tsc').value),
+    kap:   parseFloat(document.getElementById('bb-kappa').value),
+    inst:  document.getElementById('bb-inst').value,
+    Ls:    parseFloat(document.getElementById('bb-lsupp').value),
+    dcc:   parseFloat(document.getElementById('bb-dcc').value),
+    L:     parseFloat(document.getElementById('bb-length').value) || 0,
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   BUSBAR SIZING MODE
+   ══════════════════════════════════════════════════════════════════════ */
+let _bbSizCandidates = [];
+
+function bbSize() {
+  const s = _bbReadShared();
+  const maxPar = parseInt(document.getElementById('bb-maxpar').value, 10) || 2;
+
+  if ([s.In, s.Un, s.cosph, s.Ta, s.Ik, s.tsc, s.kap, s.Ls, s.dcc].some(v => isNaN(v) || v <= 0)) {
+    showToast(T[lang].bbErrInputs || 'Please fill all fields with positive values.');
+    return;
+  }
+
+  const candidates = [];
+  for (let n = 1; n <= maxPar; n++) {
+    for (const [w, t] of BB_SIZES) {
+      const r = _bbCalc(s.M, s.sysKey, w, t, n, s.inst, s.In, s.Un, s.cosph,
+                        s.Ta, s.Ik, s.tsc, s.kap, s.Ls, s.dcc, s.L);
+      if (r.overall_pass) {
+        candidates.push({ w, t, n, M: s.M, matKey: s.matKey, ...r });
+        break;                          // smallest passing size for this n
+      }
+    }
+  }
+  _bbSizCandidates = candidates;
+  _bbSizRender(s, candidates);
+}
+
+function _bbSizRender(s, candidates) {
+  const resCard = document.getElementById('bb-siz-res-card');
+  const recEl   = document.getElementById('bb-siz-recommend');
+  const tblEl   = document.getElementById('bb-siz-table');
+  if (!resCard) return;
+  resCard.style.display = '';
+
+  const fmt = (v, d = 2) => isFinite(v) ? v.toFixed(d) : 'inf';
+
+  if (candidates.length === 0) {
+    recEl.innerHTML = `<div class="bb-badge bb-fail" style="display:block;padding:14px;font-size:13px">${
+      T[lang].bbNoSizeFound || 'No standard size found — increase max parallel bars or review mechanical parameters.'
+    }</div>`;
+    tblEl.innerHTML = '';
+    document.getElementById('bb-siz-use-btn').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('bb-siz-use-btn').style.display = '';
+  const best = candidates[0];
+
+  /* — Recommendation card — */
+  recEl.innerHTML = `
+    <div style="background:var(--suc-bg);border:1.5px solid var(--suc-bdr);border-radius:var(--r-md);padding:14px 18px">
+      <div style="font-size:11px;font-weight:700;color:var(--suc);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">${
+        T[lang].bbSizRecommend || '★ Recommended Size'}</div>
+      <div style="font-size:22px;font-weight:800;color:var(--on-surf);margin-bottom:10px">
+        ${best.M.label} ${best.w}\xd7${best.t} mm${best.n > 1 ? ' \xd7 ' + best.n + ' bars/phase' : ''}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;font-size:12px;color:var(--on-surf-var)">
+        <span>A = ${best.A_mm2} mm\xb2 \xd7 ${best.n}</span>
+        <span>ΔT = ${fmt(best.DeltaT,1)} K</span>
+        <span>Iz = ${fmt(best.Iz_tot_bus,0)} A</span>
+        <span>S/Smin = ${best.S_total}/${fmt(best.S_min,1)} mm\xb2</span>
+        <span>σ = ${fmt(best.sigma_max/1e6,1)} MPa</span>
+        <span>δ = ${fmt(best.delta_m*1000,3)} mm</span>
+        ${best.L > 0 ? `<span>ΔU = ${fmt(best.dU_pct,2)} %</span>` : ''}
+      </div>
+    </div>`;
+
+  /* — Comparison table (all candidates) — */
+  if (candidates.length > 1) {
+    const rows = candidates.map((c, i) => `
+      <tr class="bb-siz-row${i === 0 ? ' bb-siz-row-best' : ''}" onclick="_bbSizSelect(${i},this)" style="cursor:pointer">
+        <td style="padding:5px 8px"><input type="radio" name="bb-siz-sel" ${i === 0 ? 'checked' : ''}></td>
+        <td style="padding:5px 8px;font-weight:700">${c.M.label} ${c.w}\xd7${c.t}</td>
+        <td style="padding:5px 8px;text-align:center">${c.n}</td>
+        <td style="padding:5px 8px;text-align:right">${c.A_mm2 * c.n}</td>
+        <td style="padding:5px 8px;text-align:right">${fmt(c.DeltaT,1)}</td>
+        <td style="padding:5px 8px;text-align:right">${fmt(c.Iz_tot_bus,0)}</td>
+        <td style="padding:5px 8px;text-align:right">${c.S_total}/${fmt(c.S_min,1)}</td>
+        <td style="padding:5px 8px;text-align:right">${fmt(c.sigma_max/1e6,1)}/${c.M.sigma_y/1e6}</td>
+        <td style="padding:5px 8px;text-align:right">${fmt(c.delta_m*1000,3)}</td>
+        <td style="padding:5px 8px;text-align:right">${c.L > 0 ? fmt(c.dU_pct,2)+'%' : '—'}</td>
+      </tr>`).join('');
+    tblEl.innerHTML = `
+      <div class="res-lbl" style="margin:14px 0 6px">${T[lang].bbSizCandHdr || 'All passing candidates'}</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+          <thead><tr style="background:var(--surf-2);font-weight:700;font-size:10px;text-transform:uppercase;color:var(--on-surf-var)">
+            <th style="padding:6px 8px"></th>
+            <th style="padding:6px 8px;text-align:left">Size</th>
+            <th style="padding:6px 8px">n</th>
+            <th style="padding:6px 8px;text-align:right">A\xd7n mm\xb2</th>
+            <th style="padding:6px 8px;text-align:right">ΔT K</th>
+            <th style="padding:6px 8px;text-align:right">Iz A</th>
+            <th style="padding:6px 8px;text-align:right">S/Smin mm\xb2</th>
+            <th style="padding:6px 8px;text-align:right">σ/σy MPa</th>
+            <th style="padding:6px 8px;text-align:right">δ mm</th>
+            <th style="padding:6px 8px;text-align:right">ΔU%</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  } else {
+    tblEl.innerHTML = '';
+  }
+}
+
+function _bbSizSelect(idx, row) {
+  document.querySelectorAll('[name="bb-siz-sel"]').forEach((r, i) => { r.checked = (i === idx); });
+}
+
+function bbSizUseSelected() {
+  const radios = [...document.querySelectorAll('[name="bb-siz-sel"]')];
+  const idx = Math.max(0, radios.findIndex(r => r.checked));
+  const c = _bbSizCandidates[idx] || _bbSizCandidates[0];
+  if (!c) return;
+  const sel = document.getElementById('bb-std-size');
+  if (sel) { sel.value = c.w + ',' + c.t; _bbApplyStdSize(); }
+  document.getElementById('bb-parallel').value = c.n;
+  bbSwitchSub('verif');
+  showToast(T[lang].bbSizCopied || 'Size copied to Verification — press Calculate to verify.');
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   BUSBAR SIZING VERIFICATION MODE
+   ══════════════════════════════════════════════════════════════════════ */
+function bbCalculate() {
+  const s = _bbReadShared();
+  const w  = parseFloat(document.getElementById('bb-width').value);
+  const t  = parseFloat(document.getElementById('bb-thick').value);
+  const n  = parseInt(document.getElementById('bb-parallel').value, 10);
+
+  if ([w, t, n, s.In, s.Un, s.cosph, s.Ta, s.Ik, s.tsc, s.kap, s.Ls, s.dcc]
+      .some(v => isNaN(v) || v <= 0)) {
+    showToast(T[lang].bbErrInputs || 'Please fill all fields with positive values.');
+    return;
+  }
+
+  const r = _bbCalc(s.M, s.sysKey, w, t, n, s.inst, s.In, s.Un, s.cosph,
+                    s.Ta, s.Ik, s.tsc, s.kap, s.Ls, s.dcc, s.L);
+
+  const {
+    A_mm2, P_mm, Ik_A, h, R0_pm, HC, dR_dT, I_bar, k_par,
+    Iz_bar_bus, Iz_bar_term, Iz_tot_bus, Iz_tot_term,
+    DeltaT, theta_op, pass_dt, pass_term_dt, pass_amp, amp_margin,
+    S_min, S_total, pass_sc, sc_marg,
+    Ipk, f_em, Z_bend, Mbend, sigma_max,
+    delta_m, delta_lim, pass_mech, mech_marg, pass_defl, defl_marg,
+    theta_mean, rho_op, R_bus, X_bus, dU_V, dU_pct, pass_vd,
+    overall_pass, Ls_m, dcc_m, I_bend,
+  } = r;
+
+  const P_m  = P_mm * 1e-3;
+  const fmt  = (v, d = 2) => isFinite(v) ? v.toFixed(d) : 'inf';
+  const fmtE = (v, d = 3) => v.toExponential(d);
+  const pf   = p => p ? '[OK]  PASS' : '[FAIL] FAIL';
+
+  /* — ASCII-safe step-by-step (renders well in browser pre AND in PDF) — */
   const lines = [
-    `══ INPUTS ══`,
-    `Material:          ${M.label}`,
-    `Busbar section:    ${w} × ${t} mm  →  A = ${A_mm2} mm²  ×  ${n} bar/phase`,
-    `Cooling perimeter: P = 2·(${w}+${t}) = ${P_mm} mm`,
-    `Bus length L:      ${L} m`,
-    `Installation:      ${inst}  →  h_eff = ${h} W/(m²·K)`,
-    `System:            ${sysKey.toUpperCase()}    In = ${In} A    Un = ${Un} V`,
-    `Ambient Ta:        ${Ta} °C`,
+    `== INPUTS ==`,
+    `Material:          ${s.M.label}`,
+    `Busbar section:    ${w} x ${t} mm  ->  A = ${A_mm2} mm^2  x  ${n} bar/phase`,
+    `Cooling perimeter: P = 2*(${w}+${t}) = ${P_mm} mm`,
+    `Bus length L:      ${s.L} m`,
+    `Installation:      ${s.inst}  ->  h_eff = ${h} W/(m^2*K)`,
+    `System:            ${s.sysKey.toUpperCase()}    In = ${s.In} A    Un = ${s.Un} V`,
+    `Ambient Ta:        ${s.Ta} degC`,
     ``,
-    `══ CHECK 1 — TEMPERATURE RISE  (IEC 61439-1 §10.10 / Table 5) ══`,
-    `Steady-state thermal balance per unit length:`,
-    `  I²·ρ(θ)/A = h·P·ΔT`,
+    `== CHECK 1 -- TEMPERATURE RISE  (IEC 61439-1 s10.10 / Table 5) ==`,
+    `Steady-state energy balance per unit length:  I^2*rho(T)/A = h*P*dT`,
     ``,
-    `R₀/m at ${Ta} °C:`,
-    `  = ρ₂₀·(1+α·(Ta−20))/A`,
-    `  = ${fmtE(M.rho20)}·(1+${M.alpha20}·(${Ta}−20)) / ${fmtE(A_m2)}`,
-    `  = ${fmtE(R0_pm)} Ω/m`,
-    `HC = h·P = ${h} · ${fmt(P_m, 5)} = ${fmt(HC, 5)} W/(m·K)`,
-    `I per bar = ${In} / ${n} = ${fmt(I_bar, 2)} A`,
-    `ΔT = I²·R₀/m / (HC − I²·α·ρ₂₀/A)`,
-    `   = ${fmt(I_bar,2)}²·${fmtE(R0_pm)} / (${fmt(HC,5)} − ${fmt(I_bar,2)}²·${fmtE(dR_dT)})`,
-    `   = ${fmt(DeltaT, 2)} K   →   θ_op = ${fmt(theta_op, 1)} °C`,
+    `R0/m at Ta=${s.Ta} degC:`,
+    `  = rho20 * (1 + alpha*(Ta-20)) / A`,
+    `  = ${fmtE(s.M.rho20)} * (1 + ${s.M.alpha20}*(${s.Ta}-20)) / ${fmtE(r.A_m2)}`,
+    `  = ${fmtE(R0_pm)} Ohm/m`,
+    `HC = h*P = ${h} * ${fmt(P_m,5)} = ${fmt(HC,5)} W/(m*K)`,
+    `I_bar = In/n = ${s.In}/${n} = ${fmt(I_bar,2)} A`,
+    `dT = I^2*R0/m / (HC - I^2*alpha*rho20/A)`,
+    `   = ${fmt(I_bar,2)}^2 * ${fmtE(R0_pm)} / (${fmt(HC,5)} - ${fmt(I_bar,2)}^2 * ${fmtE(dR_dT)})`,
+    `   = ${fmt(DeltaT,2)} K   ->   theta_op = ${fmt(theta_op,1)} degC`,
     ``,
     `IEC 61439-1 Table 5 limits:`,
-    `  Bare busbar conductors (internal): ΔT ≤ ${BB_DT_BUSBAR} K  →  ${pf(pass_dt)}`,
-    `  Terminals (ext. cable connection): ΔT ≤ ${BB_DT_TERMINAL} K  →  ${pass_term_dt ? '✅ PASS' : '⚠ EXCEEDS — verify terminal rating'}`,
+    `  Bare busbars (internal): dT <= ${BB_DT_BUSBAR} K  ->  ${pf(pass_dt)}`,
+    `  Terminals (ext. cable):  dT <= ${BB_DT_TERMINAL} K  ->  ${pass_term_dt ? '[OK]  PASS' : '[!]  EXCEEDS -- verify terminal rating'}`,
     ``,
-    `Iz single bar @ ΔT = ${BB_DT_BUSBAR} K:  √(HC·ΔT/(R₀+dR·ΔT)) = ${fmt(Iz_bar_bus, 1)} A`,
-    `Iz single bar @ ΔT = ${BB_DT_TERMINAL} K (terminals):           = ${fmt(Iz_bar_term, 1)} A`,
-    `Parallel derating n=${n}: k_par = ${k_par}`,
-    `Iz total (${n}×, busbar limit):   ${fmt(Iz_tot_bus,  1)} A`,
-    `Iz total (${n}×, terminal limit): ${fmt(Iz_tot_term, 1)} A`,
-    `In = ${In} A  ≤  Iz = ${fmt(Iz_tot_bus,1)} A  →  ${pf(pass_amp)}  (margin ${fmt(amp_margin,1)} %)`,
+    `Iz single bar @ dT=${BB_DT_BUSBAR} K:    sqrt(HC*dT/(R0+dR*dT)) = ${fmt(Iz_bar_bus,1)} A`,
+    `Iz single bar @ dT=${BB_DT_TERMINAL} K (terminals):             = ${fmt(Iz_bar_term,1)} A`,
+    `Parallel derating n=${n}:  k_par = ${k_par}`,
+    `Iz total (${n}x, busbar limit):   ${fmt(Iz_tot_bus,1)} A`,
+    `Iz total (${n}x, terminal limit): ${fmt(Iz_tot_term,1)} A`,
+    `In=${s.In} A  <=  Iz=${fmt(Iz_tot_bus,1)} A  ->  ${pf(pass_amp)}  (margin ${fmt(amp_margin,1)} %)`,
     ``,
-    `══ CHECK 2 — SHORT-CIRCUIT THERMAL WITHSTAND  (IEC 61439-1 §10.11) ══`,
-    `Adiabatic formula (IEC 60865-1):  S_min = Ik · √t / k`,
-    `k = ${M.k_sc} A·s^0.5/mm²  (${M.label} bare, 20 → 300 °C per IEC 60364-4-43)`,
-    `S_min = ${fmt(Ik_A,0)} · √${tsc} / ${M.k_sc}`,
-    `      = ${fmt(Ik_A,0)} · ${fmt(Math.sqrt(tsc),4)} / ${M.k_sc}`,
-    `      = ${fmt(S_min, 2)} mm²`,
-    `S total = ${n} × ${A_mm2} = ${S_total} mm²`,
-    `S_total ≥ S_min  →  ${pf(pass_sc)}  (margin ${fmt(sc_marg,1)} %)`,
+    `== CHECK 2 -- SHORT-CIRCUIT THERMAL WITHSTAND  (IEC 61439-1 s10.11) ==`,
+    `Adiabatic formula (IEC 60865-1):  S_min = Ik * sqrt(t) / k`,
+    `k = ${s.M.k_sc} A*s^0.5/mm^2  (${s.M.label} bare, 20->300 degC, IEC 60364-4-43)`,
+    `S_min = ${fmt(Ik_A,0)} * sqrt(${s.tsc}) / ${s.M.k_sc}`,
+    `      = ${fmt(Ik_A,0)} * ${fmt(Math.sqrt(s.tsc),4)} / ${s.M.k_sc}`,
+    `      = ${fmt(S_min,2)} mm^2`,
+    `S_total = ${n} x ${A_mm2} = ${S_total} mm^2`,
+    `S_total >= S_min  ->  ${pf(pass_sc)}  (margin ${fmt(sc_marg,1)} %)`,
     ``,
-    `══ CHECK 3 — PEAK FORCE & MECHANICAL WITHSTAND  (IEC 61439-1 §10.2) ══`,
+    `== CHECK 3 -- PEAK FORCE & MECHANICAL WITHSTAND  (IEC 61439-1 s10.2) ==`,
     `Peak current:`,
-    `  κ = ${kap}  (IEC 60909 peak factor)`,
-    `  I_pk = κ · √2 · Ik = ${fmt(kap,2)} · 1.4142 · ${fmt(Ik_A,0)} = ${fmt(Ipk,0)} A  (${fmt(Ipk/1e3,2)} kA)`,
+    `  kap = ${s.kap}  (IEC 60909 peak factor)`,
+    `  I_pk = kap*sqrt(2)*Ik = ${fmt(s.kap,2)}*1.4142*${fmt(Ik_A,0)} = ${fmt(Ipk,0)} A  (${fmt(Ipk/1e3,2)} kA)`,
     ``,
-    `Electromagnetic force (2-conductor model):`,
-    `  f = 2×10⁻⁷ · I_pk² / d_cc`,
-    `    = 2×10⁻⁷ · ${fmt(Ipk,0)}² / ${fmt(dcc_m,4)}`,
-    `    = ${fmt(f_em, 2)} N/m`,
+    `Electromagnetic force per unit length (2-conductor model):`,
+    `  f = 2e-7 * I_pk^2 / d_cc`,
+    `    = 2e-7 * ${fmt(Ipk,0)}^2 / ${fmt(dcc_m,4)}`,
+    `    = ${fmt(f_em,2)} N/m`,
     ``,
-    `Simply-supported beam  L_s = ${Ls} mm:`,
-    inst === 'edge'
-      ? `  Orientation: on-edge → WEAK axis  (Z = w·t²/6 = ${w}·${t}²/6 = ${fmt(Z_bend*1e9,2)} ×10⁻⁹ m³)`
-      : `  Orientation: flat → STRONG axis  (Z = t·w²/6 = ${t}·${w}²/6 = ${fmt(Z_bend*1e9,2)} ×10⁻⁹ m³)`,
-    `  M_max = f·L_s²/8 = ${fmt(f_em,2)} · ${fmt(Ls_m,4)}² / 8 = ${fmt(Mbend,4)} N·m`,
-    `  σ_max = M_max/Z = ${fmt(sigma_max/1e6, 2)} MPa  vs  σ_y(${M.label}) = ${M.sigma_y/1e6} MPa`,
-    `  σ_max ≤ σ_y  →  ${pf(pass_mech)}  (margin ${fmt(mech_marg,1)} %)`,
+    `Simply-supported beam  L_s = ${s.Ls} mm:`,
+    s.inst === 'edge'
+      ? `  On-edge -> WEAK axis  (Z = w*t^2/6 = ${w}*${t}^2/6 = ${fmt(Z_bend*1e9,2)} x10^-9 m^3)`
+      : `  Flat    -> STRONG axis  (Z = t*w^2/6 = ${t}*${w}^2/6 = ${fmt(Z_bend*1e9,2)} x10^-9 m^3)`,
+    `  M_max = f*Ls^2/8 = ${fmt(f_em,2)}*${fmt(Ls_m,4)}^2/8 = ${fmt(Mbend,4)} N*m`,
+    `  sigma_max = M_max/Z = ${fmt(sigma_max/1e6,2)} MPa  vs  sigma_y(${s.M.label}) = ${s.M.sigma_y/1e6} MPa`,
+    `  sigma_max <= sigma_y  ->  ${pf(pass_mech)}  (margin ${fmt(mech_marg,1)} %)`,
     ``,
-    `Deflection (limit L_s/200 = ${fmt(delta_lim*1000,2)} mm):`,
-    `  δ = 5·f·L⁴ / (384·E·I)`,
-    `    = 5·${fmt(f_em,2)}·${fmt(Ls_m,4)}⁴ / (384·${fmtE(M.E_mod)}·${fmtE(I_bend)})`,
-    `    = ${fmt(delta_m*1000, 4)} mm`,
-    `  δ ≤ L_s/200  →  ${pf(pass_defl)}  (margin ${fmt(defl_marg,1)} %)`,
+    `Deflection  (limit L_s/200 = ${fmt(delta_lim*1000,2)} mm):`,
+    `  delta = 5*f*Ls^4 / (384*E*I)`,
+    `        = 5*${fmt(f_em,2)}*${fmt(Ls_m,4)}^4 / (384*${fmtE(s.M.E_mod)}*${fmtE(I_bend)})`,
+    `        = ${fmt(delta_m*1000,4)} mm`,
+    `  delta <= Ls/200  ->  ${pf(pass_defl)}  (margin ${fmt(defl_marg,1)} %)`,
     ``,
-    `══ CHECK 4 — VOLTAGE DROP  (IEC 61439-1 §10.10.4) ══`,
-    `Informational — no explicit IEC 61439 numeric limit; ≤1 % is common practice.`,
-    `ρ @ θ_mean = ${fmt(theta_mean,1)} °C:  ${fmtE(rho_op)} Ω·m`,
-    `R = ρ·L/(A·n) = ${fmtE(rho_op)}·${L} / (${fmtE(A_m2)}·${n}) = ${fmt(R_bus*1e3,4)} mΩ`,
-    `X ≈ 0.12 mΩ/m · ${L} m = ${fmt(X_bus*1e3,4)} mΩ   (50 Hz estimate)`,
-    sysKey === 'dc'
-      ? `ΔU = 2·In·R = 2·${In}·${fmt(R_bus*1e3,4)} mΩ = ${fmt(dU_V,4)} V`
-      : sysKey === 'ac3'
-        ? `ΔU = √3·In·(R·cosφ + X·sinφ) = ${fmt(dU_V,4)} V  [3-phase]`
-        : `ΔU = 2·In·(R·cosφ + X·sinφ) = ${fmt(dU_V,4)} V  [1-phase]`,
-    `ΔU% = ${fmt(dU_V,4)} / ${Un} × 100 = ${fmt(dU_pct,3)} %   →  ${pass_vd ? '✅ ≤1 %' : '⚠ >1 % (review)'}`,
+    `== CHECK 4 -- VOLTAGE DROP  (IEC 61439-1 s10.10.4 -- informational) ==`,
+    `No explicit numeric limit in IEC 61439; <=1% is common design practice.`,
+    `rho @ theta_mean=${fmt(theta_mean,1)} degC:  ${fmtE(rho_op)} Ohm*m`,
+    `R = rho*L/(A*n) = ${fmtE(rho_op)}*${s.L}/(${fmtE(r.A_m2)}*${n}) = ${fmt(R_bus*1e3,4)} mOhm`,
+    `X ~= 0.12 mOhm/m * ${s.L} m = ${fmt(X_bus*1e3,4)} mOhm  (50 Hz estimate)`,
+    s.sysKey === 'dc'
+      ? `dU = 2*In*R = 2*${s.In}*${fmt(R_bus*1e3,4)} mOhm = ${fmt(dU_V,4)} V`
+      : s.sysKey === 'ac3'
+        ? `dU = sqrt(3)*In*(R*cosPhi + X*sinPhi) = ${fmt(dU_V,4)} V  [3-phase]`
+        : `dU = 2*In*(R*cosPhi + X*sinPhi) = ${fmt(dU_V,4)} V  [1-phase]`,
+    `dU% = ${fmt(dU_V,4)}/${s.Un}*100 = ${fmt(dU_pct,3)} %   ->  ${pass_vd ? '[OK] <=1%' : '[!] >1% (review)'}`,
   ];
 
-  /* ── render ─────────────────────────────────────────────────────────── */
+  /* — Render DOM — */
   document.getElementById('bb-res-card').style.display = '';
   document.getElementById('bb-steps').textContent = lines.join('\n');
 
-  /* overall verdict */
   const vrd = document.getElementById('bb-verdict');
   vrd.textContent = overall_pass
-    ? (T[lang].bbOverallPass || '✅ All IEC 61439-1 structural checks PASS')
-    : (T[lang].bbOverallFail || '❌ One or more checks FAIL — review highlighted items');
+    ? (T[lang].bbOverallPass || 'All IEC 61439-1 structural checks PASS')
+    : (T[lang].bbOverallFail || 'One or more checks FAIL — review highlighted items');
   vrd.className = 'sc-trip-box ' + (overall_pass ? 'sc-trip-ok' : 'sc-trip-fail');
 
-  /* check badges */
   _bbBadge('bb-res-dt',      pass_dt,      `${fmt(DeltaT,1)} K  (limit ${BB_DT_BUSBAR} K)`);
-  _bbBadge('bb-res-term-dt', pass_term_dt, `${fmt(DeltaT,1)} K  (limit ${BB_DT_TERMINAL} K)`, /*warnOnly=*/true);
-  _bbBadge('bb-res-amp',     pass_amp,     `${fmt(In,0)} A  ≤  ${fmt(Iz_tot_bus,0)} A   +${fmt(amp_margin,1)} %`);
-  _bbBadge('bb-res-sc',      pass_sc,      `${fmt(S_total,0)} mm²  ≥  ${fmt(S_min,1)} mm²   +${fmt(sc_marg,1)} %`);
-  _bbBadge('bb-res-mech',    pass_mech,    `σ = ${fmt(sigma_max/1e6,1)} MPa  ≤  ${M.sigma_y/1e6} MPa   +${fmt(mech_marg,1)} %`);
-  _bbBadge('bb-res-defl',    pass_defl,    `δ = ${fmt(delta_m*1000,3)} mm  ≤  L/200 = ${fmt(delta_lim*1000,2)} mm`);
-  _bbBadge('bb-res-vd',      pass_vd,      `ΔU = ${fmt(dU_pct,3)} %  (≤1 % practice)`, /*warnOnly=*/false, /*isInfo=*/true);
+  _bbBadge('bb-res-term-dt', pass_term_dt, `${fmt(DeltaT,1)} K  (limit ${BB_DT_TERMINAL} K)`, true);
+  _bbBadge('bb-res-amp',     pass_amp,     `${fmt(s.In,0)} A ≤ ${fmt(Iz_tot_bus,0)} A   +${fmt(amp_margin,1)} %`);
+  _bbBadge('bb-res-sc',      pass_sc,      `${fmt(S_total,0)} ≥ ${fmt(S_min,1)} mm\xb2   +${fmt(sc_marg,1)} %`);
+  _bbBadge('bb-res-mech',    pass_mech,    `σ=${fmt(sigma_max/1e6,1)} ≤ ${s.M.sigma_y/1e6} MPa   +${fmt(mech_marg,1)} %`);
+  _bbBadge('bb-res-defl',    pass_defl,    `δ=${fmt(delta_m*1000,3)} mm ≤ L/200=${fmt(delta_lim*1000,2)} mm`);
+  _bbBadge('bb-res-vd',      pass_vd,      `ΔU=${fmt(dU_pct,3)} %  (≤1% practice)`, false, true);
 
-  /* key-value cells */
-  _bbKV('bb-kv-dt',        fmt(DeltaT,1)        + ' K');
-  _bbKV('bb-kv-theta',     fmt(theta_op,1)       + ' °C');
-  _bbKV('bb-kv-iz-bus',    fmt(Iz_tot_bus,0)     + ' A');
-  _bbKV('bb-kv-iz-term',   fmt(Iz_tot_term,0)    + ' A');
-  _bbKV('bb-kv-smin',      fmt(S_min,1)          + ' mm²');
-  _bbKV('bb-kv-stotal',    S_total               + ' mm²');
-  _bbKV('bb-kv-ipk',       fmt(Ipk/1e3,2)        + ' kA');
-  _bbKV('bb-kv-fem',       fmt(f_em,1)           + ' N/m');
-  _bbKV('bb-kv-sigma',     fmt(sigma_max/1e6,1)  + ' MPa');
-  _bbKV('bb-kv-delta',     fmt(delta_m*1000,3)   + ' mm');
-  _bbKV('bb-kv-du',        fmt(dU_V,3)           + ' V  (' + fmt(dU_pct,3) + ' %)');
+  _bbKV('bb-kv-dt',        fmt(DeltaT,1)       + ' K');
+  _bbKV('bb-kv-theta',     fmt(theta_op,1)      + ' \xb0C');
+  _bbKV('bb-kv-iz-bus',    fmt(Iz_tot_bus,0)    + ' A');
+  _bbKV('bb-kv-iz-term',   fmt(Iz_tot_term,0)   + ' A');
+  _bbKV('bb-kv-smin',      fmt(S_min,1)         + ' mm\xb2');
+  _bbKV('bb-kv-stotal',    S_total              + ' mm\xb2');
+  _bbKV('bb-kv-ipk',       fmt(Ipk/1e3,2)       + ' kA');
+  _bbKV('bb-kv-fem',       fmt(f_em,1)          + ' N/m');
+  _bbKV('bb-kv-sigma',     fmt(sigma_max/1e6,1) + ' MPa');
+  _bbKV('bb-kv-delta',     fmt(delta_m*1000,3)  + ' mm');
+  _bbKV('bb-kv-du',        fmt(dU_V,3)          + ' V  (' + fmt(dU_pct,3) + ' %)');
 }
 
-/* ── badge helper ─────────────────────────────────────────────────────── */
+/* ── Badge / KV helpers ───────────────────────────────────────────────── */
 function _bbBadge(id, pass, text, warnOnly = false, isInfo = false) {
   const el = document.getElementById(id);
   if (!el) return;
   let icon, cls;
-  if (pass) {
-    icon = '✅'; cls = 'bb-pass';
-  } else if (isInfo) {
-    icon = '⚠'; cls = 'bb-warn';
-  } else if (warnOnly) {
-    icon = '⚠'; cls = 'bb-warn';
-  } else {
-    icon = '❌'; cls = 'bb-fail';
-  }
+  if (pass)        { icon = '✅'; cls = 'bb-pass'; }
+  else if (isInfo) { icon = '⚠';  cls = 'bb-warn'; }
+  else if (warnOnly){ icon = '⚠'; cls = 'bb-warn'; }
+  else             { icon = '❌'; cls = 'bb-fail'; }
   el.textContent = icon + '  ' + text;
-  el.className = 'bb-badge ' + cls;
+  el.className   = 'bb-badge ' + cls;
 }
 
 function _bbKV(id, val) {
@@ -367,7 +512,9 @@ function _bbKV(id, val) {
   if (el) el.textContent = val;
 }
 
-/* ── PDF export ───────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   PDF EXPORT  —  IEC 61439-1 Calculation Report
+   ══════════════════════════════════════════════════════════════════════ */
 function bbDownloadPdf() {
   if (typeof window.jspdf === 'undefined') { alert('jsPDF not loaded'); return; }
   const { jsPDF } = window.jspdf;
@@ -378,6 +525,7 @@ function bbDownloadPdf() {
   try {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const PW = 210, PH = 297, M = 15;
+    const BODY_W = PW - 2 * M;
 
     const engineer = (document.getElementById('bb-engineer') || {}).value || '';
     const stepsRaw = (document.getElementById('bb-steps')    || {}).textContent || '';
@@ -389,158 +537,197 @@ function bbDownloadPdf() {
 
     const title    = T[lang].bbPdfTitle || 'Bus Bar Sizing — IEC 61439-1';
     const standard = 'IEC 61439-1:2011 / IEC 60865-1';
-    const ACC      = [0, 80, 160];
-
-    /* ── count pages first (results page + steps pages) ── */
-    const lineH    = 4.0;
-    const pageBody = PH - M - 22 - (M + 8);  // usable height per steps page
     const stepsLines = stepsRaw.split('\n');
-    const stepsPages = Math.max(1, Math.ceil(stepsLines.length * lineH / pageBody));
+
+    /* ── page count estimate ── */
+    const STEP_LH  = 4.2;
+    const STEP_PH  = PH - M - 22 - (M + 10);
+    const stepsPages = Math.max(1, Math.ceil(stepsLines.length * STEP_LH / STEP_PH));
     const TOTAL_PAGES = 1 + stepsPages;
 
-    function drawHeader() {
-      pdfMakeHeader(doc, { PW, M, title: pdfSafe(title) });
-    }
-    function drawFooter(pageNum) {
-      pdfMakeFooter(doc, { PW, PH, M, pageNum, totalPages: TOTAL_PAGES, engineer, standard });
-    }
-    function secTitle(y, text) {
-      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...ACC);
-      doc.text(pdfSafe(text), M, y); y += 4.5;
-      doc.setDrawColor(200, 210, 225); doc.setLineWidth(0.2);
-      doc.line(M, y, PW - M, y); y += 4;
+    /* ── shared helpers ── */
+    function hdr()      { pdfMakeHeader(doc, { PW, M, title: pdfSafe(title) }); }
+    function ftr(pg)    { pdfMakeFooter(doc, { PW, PH, M, pageNum: pg, totalPages: TOTAL_PAGES, engineer, standard }); }
+
+    function sectionTitle(y, txt) {
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 80, 160);
+      doc.text(pdfSafe(txt), M, y);
+      const tw = doc.getTextWidth(pdfSafe(txt));
+      y += 4;
+      doc.setDrawColor(0, 80, 160); doc.setLineWidth(0.5);
+      doc.line(M, y, M + tw + 4, y);
+      doc.setDrawColor(210, 220, 230); doc.setLineWidth(0.2);
+      doc.line(M + tw + 4, y, PW - M, y);
       doc.setTextColor(40, 40, 40);
-      return y;
+      return y + 5;
     }
 
-    /* ════════════════════════════════════════════════════════════
-       PAGE 1 — Results summary
-       ════════════════════════════════════════════════════════════ */
-    drawHeader();
-    drawFooter(1);
+    /* ════════════════════════════════════════════════════════════════
+       PAGE 1 — Compliance Summary
+       ════════════════════════════════════════════════════════════════ */
+    hdr(); ftr(1);
     let y = M + 22;
 
-    y = secTitle(y, (T[lang].bbChecksHdr || 'IEC 61439-1 Compliance Checks') + '  — ' + pdfSafe(mat.label) + '  ' + w + '\xd7' + t + ' mm  \xd7' + n);
+    /* — Overall verdict box — */
+    const verdictEl = document.getElementById('bb-verdict');
+    const isPass = verdictEl && verdictEl.classList.contains('sc-trip-ok');
+    const vColor  = isPass ? [0, 140, 80] : [200, 50, 50];
+    const vBg     = isPass ? [235, 255, 242] : [255, 235, 235];
+    doc.setFillColor(...vBg);
+    doc.roundedRect(M, y, BODY_W, 11, 2, 2, 'F');
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(...vColor);
+    doc.text(pdfSafe(verdictEl ? verdictEl.textContent : (isPass ? 'ALL CHECKS PASS' : 'CHECK(S) FAILED')),
+             PW / 2, y + 7.5, { align: 'center' });
+    y += 16;
 
-    /* collect check rows from the DOM */
+    /* — Busbar identification — */
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(40, 40, 40);
+    doc.text(pdfSafe(`${mat.label}  ${w}\xd7${t} mm${n > 1 ? '  \xd7' + n + ' bars/phase' : ''}  —  A = ${w * t} mm\xb2 \xd7 ${n} = ${w * t * n} mm\xb2`), M, y);
+    y += 8;
+
+    /* — Check rows — */
+    y = sectionTitle(y, T[lang].bbChecksHdr || 'IEC 61439-1 Compliance Checks');
+
     const checkIds = [
-      { id: 'bb-res-dt',      label: T[lang].bbChkDt      || 'Temperature rise (busbar)' },
-      { id: 'bb-res-term-dt', label: T[lang].bbChkTermDt  || 'Temperature rise (terminals)' },
-      { id: 'bb-res-amp',     label: T[lang].bbChkAmp     || 'Ampacity' },
-      { id: 'bb-res-sc',      label: T[lang].bbChkSc      || 'Short-circuit thermal withstand' },
-      { id: 'bb-res-mech',    label: T[lang].bbChkMech    || 'Mechanical (bending stress)' },
-      { id: 'bb-res-defl',    label: T[lang].bbChkDefl    || 'Deflection' },
-      { id: 'bb-res-vd',      label: T[lang].bbChkVd      || 'Voltage drop (informational)' },
+      { id: 'bb-res-dt',      lbl: T[lang].bbChkDt      || '§10.10.3  Temperature rise, bare busbar (ΔT ≤ 105 K)' },
+      { id: 'bb-res-term-dt', lbl: T[lang].bbChkTermDt  || '§10.10.3  Temperature rise, terminals (ΔT ≤ 70 K)' },
+      { id: 'bb-res-amp',     lbl: T[lang].bbChkAmp     || 'Ampacity  —  In ≤ Iz (busbar limit)' },
+      { id: 'bb-res-sc',      lbl: T[lang].bbChkSc      || '§10.11  Short-circuit thermal  (S ≥ Smin = Ik·√t / k)' },
+      { id: 'bb-res-mech',    lbl: T[lang].bbChkMech    || '§10.2  Peak-force bending stress  (σ ≤ σy)' },
+      { id: 'bb-res-defl',    lbl: T[lang].bbChkDefl    || '§10.2  Deflection  (δ ≤ Ls/200)' },
+      { id: 'bb-res-vd',      lbl: T[lang].bbChkVd      || '§10.10.4  Voltage drop  (≤ 1 % — informational)' },
     ];
 
-    doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
-    checkIds.forEach(({ id, label }) => {
+    doc.setFontSize(8.5);
+    const COL_R = PW - M;
+    checkIds.forEach(({ id, lbl }, i) => {
       const el = document.getElementById(id);
       if (!el) return;
-      const txt   = pdfSafe(el.textContent || '');
+      if (y > PH - M - 12) { doc.addPage(); hdr(); ftr(1); y = M + 22; }
+
+      const bg = (i % 2 === 0) ? [248, 250, 253] : [255, 255, 255];
+      doc.setFillColor(...bg);
+      doc.rect(M, y - 3.5, BODY_W, 7.5, 'F');
+
       const isPas = el.classList.contains('bb-pass');
       const isFai = el.classList.contains('bb-fail');
-      const isWar = el.classList.contains('bb-warn');
-      const statusColor = isPas ? [0, 140, 80] : isFai ? [200, 50, 50] : isWar ? [180, 120, 0] : [80, 80, 80];
+      const resCol = isPas ? [0, 140, 80] : isFai ? [200, 50, 50] : [160, 110, 0];
 
-      if (y > PH - M - 14) { doc.addPage(); drawHeader(); drawFooter(1); y = M + 22; }
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(50, 50, 50);
+      doc.text(pdfSafe(lbl), M + 2, y);
 
-      doc.setTextColor(40, 40, 40);
-      doc.text(pdfSafe(label), M, y);
-      doc.setTextColor(...statusColor);
-      doc.text(txt, PW - M, y, { align: 'right' });
-      doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.15);
-      doc.line(M, y + 1.5, PW - M, y + 1.5);
-      y += 6.5;
+      doc.setFont('helvetica', 'bold'); doc.setTextColor(...resCol);
+      doc.text(pdfSafe(el.textContent || ''), COL_R - 1, y, { align: 'right' });
+
+      doc.setDrawColor(220, 225, 235); doc.setLineWidth(0.15);
+      doc.line(M, y + 4, PW - M, y + 4);
+      y += 8;
     });
 
-    /* overall verdict */
-    y += 3;
-    const verdictEl = document.getElementById('bb-verdict');
-    if (verdictEl) {
-      const isPass = verdictEl.classList.contains('bb-pass');
-      doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-      doc.setTextColor(isPass ? 0 : 200, isPass ? 140 : 50, isPass ? 80 : 50);
-      doc.text(pdfSafe(verdictEl.textContent || ''), M, y);
-      y += 8;
-    }
+    y += 4;
 
-    /* key-value grid */
-    y += 2;
-    if (y < PH - M - 40) {
-      y = secTitle(y, T[lang].bbKvHdr || 'Key Values');
+    /* — Key values grid — */
+    if (y < PH - M - 55) {
+      y = sectionTitle(y, T[lang].bbKvHdr || 'Key Calculation Values');
       const kvIds = [
-        { id: 'bb-kv-dt',     label: T[lang].bbKvDt     || 'dT' },
-        { id: 'bb-kv-theta',  label: T[lang].bbKvTheta  || 'theta_op' },
-        { id: 'bb-kv-iz-bus', label: T[lang].bbKvIzBus  || 'Iz (busbar)' },
-        { id: 'bb-kv-iz-term',label: T[lang].bbKvIzTerm || 'Iz (terminal)' },
-        { id: 'bb-kv-smin',   label: T[lang].bbKvSmin   || 'S_min' },
-        { id: 'bb-kv-stotal', label: T[lang].bbKvStotal || 'S_total' },
-        { id: 'bb-kv-ipk',    label: T[lang].bbKvIpk    || 'I_pk' },
-        { id: 'bb-kv-fem',    label: T[lang].bbKvFem    || 'f_em' },
-        { id: 'bb-kv-sigma',  label: T[lang].bbKvSigma  || 'sigma_max' },
-        { id: 'bb-kv-delta',  label: T[lang].bbKvDelta  || 'delta' },
-        { id: 'bb-kv-du',     label: T[lang].bbKvDu     || 'dU%' },
+        { id: 'bb-kv-dt',      lbl: T[lang].bbKvDt     || 'ΔT per bar'          },
+        { id: 'bb-kv-theta',   lbl: T[lang].bbKvTheta  || 'θ operating'          },
+        { id: 'bb-kv-iz-bus',  lbl: T[lang].bbKvIzBus  || 'Iz (105 K busbar)'        },
+        { id: 'bb-kv-iz-term', lbl: T[lang].bbKvIzTerm || 'Iz (70 K terminals)'      },
+        { id: 'bb-kv-smin',    lbl: T[lang].bbKvSmin   || 'Smin SC thermal'          },
+        { id: 'bb-kv-stotal',  lbl: T[lang].bbKvStotal || 'S total'                  },
+        { id: 'bb-kv-ipk',     lbl: T[lang].bbKvIpk    || 'Iₚₖ peak'       },
+        { id: 'bb-kv-fem',     lbl: T[lang].bbKvFem    || 'Force f'                  },
+        { id: 'bb-kv-sigma',   lbl: T[lang].bbKvSigma  || 'σₘₐₓ' },
+        { id: 'bb-kv-delta',   lbl: T[lang].bbKvDelta  || 'Deflection δ'        },
+        { id: 'bb-kv-du',      lbl: T[lang].bbKvDu     || 'ΔU voltage drop'     },
       ];
-      const colW = (PW - 2 * M) / 3;
-      doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
-      kvIds.forEach(({ id, label }, i) => {
+      const COLS = 3;
+      const CW   = BODY_W / COLS;
+      let col = 0, rowY = y;
+      kvIds.forEach(({ id, lbl }) => {
         const el = document.getElementById(id);
         if (!el) return;
-        const col = i % 3;
-        const xPos = M + col * colW;
-        if (col === 0 && i > 0) y += 9;
-        if (y > PH - M - 14) { doc.addPage(); drawHeader(); drawFooter(1); y = M + 22; }
-        doc.setTextColor(100, 100, 100);
-        doc.text(pdfSafe(label), xPos, y);
-        doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 80, 160);
-        doc.text(pdfSafe(el.textContent || ''), xPos, y + 4);
-        doc.setFont('helvetica', 'normal');
+        /* start new row? check page overflow */
+        if (col === 0 && rowY > PH - M - 16) {
+          doc.addPage(); hdr(); ftr(1); rowY = M + 22; y = rowY;
+        }
+        const xPos = M + col * CW;
+        doc.setFillColor(245, 248, 252);
+        doc.roundedRect(xPos + 1, rowY - 2, CW - 2, 12, 1.5, 1.5, 'F');
+        doc.setFontSize(7);   doc.setFont('helvetica', 'normal'); doc.setTextColor(110, 120, 140);
+        doc.text(pdfSafe(lbl), xPos + 4, rowY + 2);
+        doc.setFontSize(9.5); doc.setFont('helvetica', 'bold');   doc.setTextColor(0, 80, 160);
+        doc.text(pdfSafe(el.textContent || ''), xPos + 4, rowY + 8.5);
+        col++;
+        if (col >= COLS) { col = 0; rowY += 14; }
       });
+      y = rowY + (col > 0 ? 14 : 0);
     }
 
-    /* ════════════════════════════════════════════════════════════
+    /* ════════════════════════════════════════════════════════════════
        PAGE 2+ — Step-by-step calculation
-       ════════════════════════════════════════════════════════════ */
+       ════════════════════════════════════════════════════════════════ */
     doc.addPage();
-    drawHeader();
-    drawFooter(2);
-    y = M + 22;
     let curPage = 2;
+    hdr(); ftr(curPage);
+    y = M + 22;
+    y = sectionTitle(y, (T[lang].bbStepsHdr || 'Step-by-Step Calculation') + '  (IEC 61439-1 / IEC 60865-1)');
 
-    y = secTitle(y, (T[lang].bbStepsHdr || 'Step-by-Step Calculation') + '  (IEC 61439-1 / IEC 60865-1)');
-
-    doc.setFontSize(8.0); doc.setFont('courier', 'normal'); doc.setTextColor(30, 30, 30);
     stepsLines.forEach(rawLine => {
-      if (!rawLine.trim()) { y += 2; return; }
+      /* blank line */
+      if (!rawLine.trim()) { y += 2.5; return; }
 
-      /* section headers: lines starting with == */
-      const isSec = /^[=═]{2}/.test(rawLine);
-      if (isSec) {
-        if (y > PH - M - 18) {
+      /* section header: lines starting with "== " */
+      if (/^==/.test(rawLine)) {
+        if (y > PH - M - 20) {
           curPage++;
-          doc.addPage(); drawHeader(); drawFooter(curPage); y = M + 22;
+          doc.addPage(); hdr(); ftr(curPage); y = M + 22;
         }
-        doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...ACC);
-        doc.text(pdfSafe(rawLine), M, y); y += 4.5;
-        doc.setDrawColor(200, 210, 225); doc.setLineWidth(0.15);
-        doc.line(M, y, PW - M, y); y += 3.5;
-        doc.setFontSize(8.0); doc.setFont('courier', 'normal'); doc.setTextColor(30, 30, 30);
+        y += 2;
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 80, 160);
+        doc.text(pdfSafe(rawLine), M, y);
+        y += 4;
+        doc.setDrawColor(180, 200, 230); doc.setLineWidth(0.3);
+        doc.line(M, y, PW - M, y);
+        y += 4;
+        doc.setTextColor(40, 40, 40);
         return;
       }
 
+      /* result lines: contain "[OK]" or "[FAIL]" or "[!]" */
+      const isResult = /\[OK\]|\[FAIL\]|\[!\]/.test(rawLine);
+      const isIndent  = rawLine.startsWith('  ');
+
       if (y > PH - M - 8) {
         curPage++;
-        doc.addPage(); drawHeader(); drawFooter(curPage); y = M + 22;
+        doc.addPage(); hdr(); ftr(curPage); y = M + 22;
       }
-      const indented = rawLine.startsWith('  ');
-      doc.text(pdfSafe(rawLine.trimStart()), M + (indented ? 5 : 0), y);
-      y += lineH;
+
+      if (isResult) {
+        const isOk   = rawLine.includes('[OK]');
+        const isFail = rawLine.includes('[FAIL]');
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(isOk ? 0 : isFail ? 200 : 160, isOk ? 140 : isFail ? 50 : 110, isOk ? 80 : 50);
+        doc.text(pdfSafe(rawLine.trim()), M + (isIndent ? 6 : 0), y);
+        doc.setFont('helvetica', 'normal');
+      } else if (isIndent) {
+        /* formula / indented math */
+        doc.setFontSize(7.8); doc.setFont('courier', 'normal'); doc.setTextColor(60, 60, 60);
+        doc.text(pdfSafe(rawLine.trimStart()), M + 6, y);
+      } else {
+        /* plain explanatory text */
+        doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(40, 40, 40);
+        doc.text(pdfSafe(rawLine), M, y);
+      }
+      y += STEP_LH;
     });
 
-    const fn = 'busbar_IEC61439_' + pdfSafe(mat.label) + '_' + w + 'x' + t + 'mm' + (n > 1 ? '_' + n + 'bars' : '') + '.pdf';
+    const fn = 'busbar_IEC61439_' + pdfSafe(mat.label) + '_' + w + 'x' + t + 'mm'
+               + (n > 1 ? '_' + n + 'bars' : '') + '.pdf';
     doc.save(fn);
+
   } finally {
     if (btn) { btn.textContent = T[lang].bbPdfBtn || 'Export PDF'; btn.disabled = false; }
   }
