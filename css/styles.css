@@ -752,6 +752,24 @@ option{background:var(--surf-2);color:var(--on-surf)}
 .msc-siz-suggestion{background:var(--warn-bg);border:1px solid var(--warn-bdr);color:var(--warn-col);border-radius:var(--r-md);padding:10px 14px;margin-bottom:10px;font-size:13px;line-height:1.6}
 .msc-siz-vfd-note{background:var(--info-bg);border:1px solid var(--info-bdr);color:var(--pri);border-radius:var(--r-md);padding:10px 14px;margin-bottom:10px;font-size:13px}
 
+/* ── Bus Bar Sizing (IEC 61439) ────────────────────────────────────────── */
+.bb-checks{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.bb-check-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:8px 12px;border-radius:var(--r-md);background:var(--surf-2);
+  border:1px solid var(--out-var);flex-wrap:wrap}
+.bb-check-lbl{font-size:12px;font-weight:600;color:var(--on-surf-var);letter-spacing:.2px;flex:1;min-width:0}
+.bb-badge{display:inline-block;border-radius:var(--r-sm);padding:4px 12px;font-size:11.5px;
+  font-weight:700;letter-spacing:.3px;white-space:nowrap;flex-shrink:0}
+.bb-pass{background:var(--suc-bg);color:var(--suc);border:1px solid var(--suc-bdr)}
+.bb-fail{background:rgba(255,100,100,.15);color:#ff6464;border:1px solid rgba(255,100,100,.35)}
+.bb-warn{background:var(--warn-bg);color:var(--warn-col);border:1px solid var(--warn-bdr)}
+.bb-kv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin:10px 0}
+.bb-kv-cell{background:var(--surf-3);border:1px solid var(--out-var);border-radius:var(--r-md);
+  padding:8px 12px;min-width:0}
+.bb-kv-label{font-size:10px;font-weight:600;color:var(--on-surf-var);text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:2px}
+.bb-kv-val{font-family:'Roboto Mono',monospace;font-weight:700;color:var(--pri);font-size:14px}
+
 /* ── Rec-box sub-elements ──────────────────────────────────────────────── */
 .rec-box-icon{font-size:26px;flex-shrink:0;line-height:1}
 .rec-box-body{flex:1;min-width:0}

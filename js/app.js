@@ -137,12 +137,34 @@ function resetToDefaults() {
       break;
     }
 
-    case 1:
+    case 1: {
+      // Bus Bar Sizing — reset to defaults
+      document.querySelector('[data-bb-mat="cu"]')?.click();
+      document.querySelector('[data-bb-sys="ac3"]')?.click();
+      const _bbSel = document.getElementById('bb-std-size');
+      if (_bbSel) { _bbSel.value = '60,5'; _bbSel.dispatchEvent(new Event('change')); }
+      document.getElementById('bb-parallel').value = '1';
+      document.getElementById('bb-length').value   = 2;
+      document.getElementById('bb-inst').value     = 'flat_h';
+      document.getElementById('bb-current').value  = 400;
+      document.getElementById('bb-voltage').value  = 400;
+      document.getElementById('bb-cosphi').value   = 0.85;
+      document.getElementById('bb-tamb').value     = 35;
+      document.getElementById('bb-ik').value       = 10;
+      document.getElementById('bb-tsc').value      = '1';
+      document.getElementById('bb-kappa').value    = 2.2;
+      document.getElementById('bb-lsupp').value    = 500;
+      document.getElementById('bb-dcc').value      = 100;
+      { const _bbRes = document.getElementById('bb-res-card'); if (_bbRes) _bbRes.style.display = 'none'; }
+      break;
+    }
+
+    case 2:
       if (convDir !== 'mm2ToAwg') swapConv();
       document.getElementById('cMm2').value = 2.5;
       break;
 
-    case 2:
+    case 3:
       clickBtn('#sb-enc-custom-tab');
       document.getElementById('sb-enc-h').value = 1400;
       document.getElementById('sb-enc-w').value = 800;
@@ -159,7 +181,7 @@ function resetToDefaults() {
       { const _sbRes = document.getElementById('sb-res-card'); if (_sbRes) _sbRes.style.display = 'none'; }
       break;
 
-    case 3:
+    case 4:
       if (document.getElementById('sc-dc-panel').style.display === 'none') {
         clickBtn('[onclick*="scSetVoltPreset"][onclick*="\'ac3\'"]');
         clickBtn('[onclick*="scSetMaterial"][onclick*="\'cu\'"]');
@@ -204,7 +226,7 @@ function resetToDefaults() {
       }
       break;
 
-    case 4:
+    case 5:
       mscSetMode('vd');
       document.getElementById('msc-method').value = 'dol';
       mscOnMethodChange();
@@ -228,7 +250,7 @@ function resetToDefaults() {
       { const _mscSizRes = document.getElementById('msc-siz-res-card'); if (_mscSizRes) _mscSizRes.style.display = 'none'; }
       break;
 
-    case 5:
+    case 6:
       clickBtn('[onclick*="traySetGeomMode"][onclick*="\'rect\'"]');
       clickBtn('[onclick*="traySetTrayType"][onclick*="\'ladder\'"]');
       clickBtn('[onclick*="traySetStandard"][onclick*="\'iec\'"]');
@@ -248,6 +270,7 @@ function resetToDefaults() {
 // Init
 document.getElementById('voltage').value = 24;
 buildRefTable();
+initBusbar();
 initSwitchboard();
 initShortCircuit();
 initDcCalculator();

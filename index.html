@@ -54,11 +54,12 @@
 
 <div class="tab-bar">
   <button class="tab active" onclick="switchTab(0)" data-t="tab0">Dimenzování vodičů</button>
-  <button class="tab" onclick="switchTab(1)">⇄ MM²↔AWG</button>
-  <button class="tab" onclick="switchTab(2)" data-t="tab2">Oteplení rozvaděče</button>
-  <button class="tab" onclick="switchTab(3)" data-t="tab3">Zkratový proud</button>
-  <button class="tab" onclick="switchTab(4)" data-t="tab4">Rozběh motoru</button>
-  <button class="tab" onclick="switchTab(5)" data-t="tab5">Cable Tray Fill</button>
+  <button class="tab" onclick="switchTab(1)" data-t="tab1">🔵 Bus Bar Sizing</button>
+  <button class="tab" onclick="switchTab(2)">⇄ MM²↔AWG</button>
+  <button class="tab" onclick="switchTab(3)" data-t="tab2">Oteplení rozvaděče</button>
+  <button class="tab" onclick="switchTab(4)" data-t="tab3">Zkratový proud</button>
+  <button class="tab" onclick="switchTab(5)" data-t="tab4">Rozběh motoru</button>
+  <button class="tab" onclick="switchTab(6)" data-t="tab5">Cable Tray Fill</button>
 </div>
 
 <!-- TAB 0 -->
@@ -384,8 +385,326 @@
   </div><!-- /#ws-phys-panel -->
 </div></div>
 
-<!-- TAB 1 -->
+<!-- TAB 1 — Bus Bar Sizing (IEC 61439-1) -->
 <div id="pane1" class="tab-pane"><div class="content">
+
+  <!-- ─── Card 1: Busbar Dimensions & Material ──────────────────────── -->
+  <div class="card">
+    <div class="card-hdr" data-t="bbConfigHdr">📐 Busbar Configuration</div>
+
+    <!-- Material -->
+    <div class="fld" style="margin-bottom:12px">
+      <label data-t="bbMaterial">Material</label>
+      <div class="seg-group" style="margin-bottom:0">
+        <button class="seg-btn active" data-bb-mat="cu" onclick="bbSetMat(this,'cu')">Cu — Copper</button>
+        <button class="seg-btn"        data-bb-mat="al" onclick="bbSetMat(this,'al')">Al — Aluminium</button>
+      </div>
+    </div>
+
+    <!-- Quick-select standard size -->
+    <div class="fld" style="margin-bottom:8px">
+      <label data-t="bbStdSize">Quick-select standard size (w × t)</label>
+      <div class="fld-inner">
+        <select id="bb-std-size" style="padding-left:9px;font-size:13px"></select>
+      </div>
+    </div>
+
+    <!-- Width & Thickness (always editable; synced from dropdown) -->
+    <div class="row c2">
+      <div class="fld">
+        <label data-t="bbWidth">Width w</label>
+        <div class="fld-inner">
+          <input type="number" id="bb-width" value="60" min="5" max="800" step="1"
+                 oninput="document.getElementById('bb-std-size').value=''">
+          <span class="fld-unit">mm</span>
+        </div>
+      </div>
+      <div class="fld">
+        <label data-t="bbThick">Thickness t</label>
+        <div class="fld-inner">
+          <input type="number" id="bb-thick" value="5" min="1" max="100" step="1"
+                 oninput="document.getElementById('bb-std-size').value=''">
+          <span class="fld-unit">mm</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Parallel bars per phase -->
+    <div class="fld" style="margin-bottom:12px">
+      <label data-t="bbParallel">Bars per phase (parallel)</label>
+      <div class="fld-inner">
+        <select id="bb-parallel" style="padding-left:9px;font-size:13px">
+          <option value="1" selected data-t="bbPar1">1 bar</option>
+          <option value="2" data-t="bbPar2">2 bars  (k = 0.90 derating)</option>
+          <option value="3" data-t="bbPar3">3 bars  (k = 0.83 derating)</option>
+          <option value="4" data-t="bbPar4">4 bars  (k = 0.80 derating)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Length -->
+    <div class="fld" style="margin-bottom:12px">
+      <label data-t="bbLength">Bus bar length L</label>
+      <div class="fld-inner">
+        <input type="number" id="bb-length" value="2" min="0.1" step="0.1">
+        <span class="fld-unit">m</span>
+      </div>
+    </div>
+
+    <!-- Orientation / Installation -->
+    <div class="fld">
+      <label data-t="bbInstLabel">Orientation / Installation <span class="tt" data-tt="ttBbInst" tabindex="0">ⓘ</span></label>
+      <div class="fld-inner">
+        <select id="bb-inst" style="padding-left:9px;font-size:13px">
+          <option value="flat_h" selected data-t="bbInstFlatH">Flat horizontal — h = 9 W/(m²·K)</option>
+          <option value="flat_v" data-t="bbInstFlatV">Flat vertical — h = 10 W/(m²·K)</option>
+          <option value="edge"   data-t="bbInstEdge">On edge (wide face vertical) — h = 12 W/(m²·K)</option>
+          <option value="enclosed" data-t="bbInstEnc">Enclosed / no ventilation — h = 6 W/(m²·K)</option>
+        </select>
+      </div>
+      <div class="fld-hint" data-t="bbInstHint">h_eff = natural convection + radiation coefficient</div>
+    </div>
+  </div>
+
+  <!-- ─── Card 2: Electrical Parameters ────────────────────────────── -->
+  <div class="card">
+    <div class="card-hdr" data-t="bbElecHdr">⚡ Electrical Parameters</div>
+
+    <!-- System type -->
+    <div class="fld" style="margin-bottom:12px">
+      <label data-t="bbSysLabel">System type</label>
+      <div class="seg-group" style="margin-bottom:0">
+        <button class="seg-btn active" data-bb-sys="ac3" onclick="bbSetSys(this,'ac3')" data-t="bbSysAc3">AC 3-phase</button>
+        <button class="seg-btn"        data-bb-sys="ac1" onclick="bbSetSys(this,'ac1')" data-t="bbSysAc1">AC 1-phase</button>
+        <button class="seg-btn"        data-bb-sys="dc"  onclick="bbSetSys(this,'dc')">DC</button>
+      </div>
+    </div>
+
+    <div class="row c2">
+      <!-- Nominal current -->
+      <div class="fld">
+        <label data-t="bbCurrent">Nominal current I<sub>n</sub></label>
+        <div class="fld-inner">
+          <input type="number" id="bb-current" value="400" min="1" step="1">
+          <span class="fld-unit">A</span>
+        </div>
+      </div>
+      <!-- Voltage -->
+      <div class="fld">
+        <label data-t="bbVoltage">Nominal voltage U<sub>n</sub></label>
+        <div class="fld-inner">
+          <input type="number" id="bb-voltage" value="400" min="1" step="1">
+          <span class="fld-unit">V</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Power factor (hidden for DC) -->
+    <div id="bb-cosphi-row" class="fld" style="margin-bottom:12px">
+      <label data-t="bbCosphi">Power factor cos φ</label>
+      <div class="fld-inner">
+        <input type="number" id="bb-cosphi" value="0.85" min="0.1" max="1" step="0.01">
+        <span class="fld-unit">—</span>
+      </div>
+    </div>
+
+    <!-- Ambient temperature -->
+    <div class="fld">
+      <label data-t="bbTamb">Ambient temperature T<sub>a</sub></label>
+      <div class="fld-inner">
+        <input type="number" id="bb-tamb" value="35" min="-20" max="60" step="1">
+        <span class="fld-unit">°C</span>
+      </div>
+      <div class="fld-hint" data-t="bbTambHint">IEC 61439-1: max 35 °C daily mean / 40 °C instantaneous peak</div>
+    </div>
+  </div>
+
+  <!-- ─── Card 3: Short-circuit Data ───────────────────────────────── -->
+  <div class="card">
+    <div class="card-hdr" data-t="bbScHdr">⚡ Short-Circuit Data — IEC 61439-1 §10.11</div>
+
+    <div class="row c2">
+      <!-- Ik -->
+      <div class="fld">
+        <label data-t="bbIk">Prospective I<sub>k</sub> at busbar</label>
+        <div class="fld-inner">
+          <input type="number" id="bb-ik" value="10" min="0.1" step="0.1">
+          <span class="fld-unit">kA</span>
+        </div>
+      </div>
+      <!-- Peak factor -->
+      <div class="fld">
+        <label data-t="bbKappa">Peak factor κ <span class="tt" data-tt="ttBbKappa" tabindex="0">ⓘ</span></label>
+        <div class="fld-inner">
+          <input type="number" id="bb-kappa" value="2.2" min="1.0" max="2.2" step="0.01">
+          <span class="fld-unit">—</span>
+        </div>
+        <div class="fld-hint" data-t="bbKappaHint">IEC 60909: 1.8–2.2; 2.2 = conservative LV</div>
+      </div>
+    </div>
+
+    <!-- Fault duration -->
+    <div class="fld">
+      <label data-t="bbTsc">Fault duration t <span class="tt" data-tt="ttBbTsc" tabindex="0">ⓘ</span></label>
+      <div class="fld-inner">
+        <select id="bb-tsc" style="padding-left:9px;font-size:13px">
+          <option value="0.1" data-t="bbTsc01">0.1 s — fast protection</option>
+          <option value="0.2" data-t="bbTsc02">0.2 s</option>
+          <option value="0.5" data-t="bbTsc05">0.5 s</option>
+          <option value="1"   data-t="bbTsc1" selected>1 s — IEC 61439 standard</option>
+          <option value="3"   data-t="bbTsc3">3 s — IEC 61439 maximum</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Card 4: Mechanical Parameters ────────────────────────────── -->
+  <div class="card">
+    <div class="card-hdr" data-t="bbMechHdr">🔩 Mechanical Parameters — IEC 61439-1 §10.2</div>
+
+    <div class="row c2">
+      <!-- Support spacing -->
+      <div class="fld">
+        <label data-t="bbLsupp">Support span L<sub>s</sub> <span class="tt" data-tt="ttBbLsupp" tabindex="0">ⓘ</span></label>
+        <div class="fld-inner">
+          <input type="number" id="bb-lsupp" value="500" min="50" max="3000" step="10">
+          <span class="fld-unit">mm</span>
+        </div>
+        <div class="fld-hint" data-t="bbLsuppHint">Distance between mounting insulators</div>
+      </div>
+      <!-- Phase spacing -->
+      <div class="fld">
+        <label data-t="bbDcc">Phase spacing d <span class="tt" data-tt="ttBbDcc" tabindex="0">ⓘ</span></label>
+        <div class="fld-inner">
+          <input type="number" id="bb-dcc" value="100" min="10" max="500" step="5">
+          <span class="fld-unit">mm</span>
+        </div>
+        <div class="fld-hint" data-t="bbDccHint">Centre-to-centre between adjacent phases</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Calculate ─────────────────────────────────────────────────── -->
+  <button class="btn-primary" onclick="bbCalculate()" data-t="bbCalcBtn">🔵 Calculate — IEC 61439-1</button>
+
+  <!-- ─── Results ───────────────────────────────────────────────────── -->
+  <div id="bb-res-card" style="display:none">
+    <div class="card">
+
+      <!-- Overall verdict -->
+      <div id="bb-verdict" class="sc-trip-box sc-trip-ok" style="margin-bottom:16px;font-size:14px;font-weight:700">—</div>
+
+      <!-- Check summary -->
+      <div class="card-hdr" data-t="bbChecksHdr">📋 IEC 61439-1 Compliance Checks</div>
+      <div class="bb-checks" style="margin-bottom:16px">
+
+        <div class="bb-check-row">
+          <span class="bb-check-lbl" data-t="bbChkDt">§10.10.3 — Temperature rise, bare busbar (ΔT ≤ 105 K)</span>
+          <div id="bb-res-dt" class="bb-badge">—</div>
+        </div>
+
+        <div class="bb-check-row">
+          <span class="bb-check-lbl" data-t="bbChkTermDt">§10.10.3 — Temperature rise, terminals (ΔT ≤ 70 K)</span>
+          <div id="bb-res-term-dt" class="bb-badge">—</div>
+        </div>
+
+        <div class="bb-check-row">
+          <span class="bb-check-lbl" data-t="bbChkAmp">Ampacity — I<sub>n</sub> ≤ I<sub>z</sub> (busbar limit)</span>
+          <div id="bb-res-amp" class="bb-badge">—</div>
+        </div>
+
+        <div class="bb-check-row">
+          <span class="bb-check-lbl" data-t="bbChkSc">§10.11 — Short-circuit thermal (S ≥ S<sub>min</sub> = I<sub>k</sub>·√t / k)</span>
+          <div id="bb-res-sc" class="bb-badge">—</div>
+        </div>
+
+        <div class="bb-check-row">
+          <span class="bb-check-lbl" data-t="bbChkMech">§10.2 — Peak force bending stress (σ ≤ σ<sub>y</sub>)</span>
+          <div id="bb-res-mech" class="bb-badge">—</div>
+        </div>
+
+        <div class="bb-check-row">
+          <span class="bb-check-lbl" data-t="bbChkDefl">§10.2 — Deflection (δ ≤ L<sub>s</sub>/200)</span>
+          <div id="bb-res-defl" class="bb-badge">—</div>
+        </div>
+
+        <div class="bb-check-row">
+          <span class="bb-check-lbl" data-t="bbChkVd">§10.10.4 — Voltage drop (≤1 % — informational)</span>
+          <div id="bb-res-vd" class="bb-badge">—</div>
+        </div>
+
+      </div>
+
+      <!-- Key values grid -->
+      <div class="card-hdr" data-t="bbKvHdr">📐 Key Values</div>
+      <div class="bb-kv-grid">
+        <div class="bb-kv-cell">
+          <div class="bb-kv-label" data-t="bbKvDt">ΔT per bar</div>
+          <div class="bb-kv-val" id="bb-kv-dt">—</div>
+        </div>
+        <div class="bb-kv-cell">
+          <div class="bb-kv-label" data-t="bbKvTheta">θ operating</div>
+          <div class="bb-kv-val" id="bb-kv-theta">—</div>
+        </div>
+        <div class="bb-kv-cell">
+          <div class="bb-kv-label" data-t="bbKvIzBus">I<sub>z</sub> (105 K busbar)</div>
+          <div class="bb-kv-val" id="bb-kv-iz-bus">—</div>
+        </div>
+        <div class="bb-kv-cell">
+          <div class="bb-kv-label" data-t="bbKvIzTerm">I<sub>z</sub> (70 K terminals)</div>
+          <div class="bb-kv-val" id="bb-kv-iz-term">—</div>
+        </div>
+        <div class="bb-kv-cell">
+          <div class="bb-kv-label" data-t="bbKvSmin">S<sub>min</sub> SC thermal</div>
+          <div class="bb-kv-val" id="bb-kv-smin">—</div>
+        </div>
+        <div class="bb-kv-cell">
+          <div class="bb-kv-label" data-t="bbKvStotal">S total</div>
+          <div class="bb-kv-val" id="bb-kv-stotal">—</div>
+        </div>
+        <div class="bb-kv-cell">
+          <div class="bb-kv-label" data-t="bbKvIpk">I<sub>pk</sub></div>
+          <div class="bb-kv-val" id="bb-kv-ipk">—</div>
+        </div>
+        <div class="bb-kv-cell">
+          <div class="bb-kv-label" data-t="bbKvFem">Force f</div>
+          <div class="bb-kv-val" id="bb-kv-fem">—</div>
+        </div>
+        <div class="bb-kv-cell">
+          <div class="bb-kv-label" data-t="bbKvSigma">σ<sub>max</sub></div>
+          <div class="bb-kv-val" id="bb-kv-sigma">—</div>
+        </div>
+        <div class="bb-kv-cell">
+          <div class="bb-kv-label" data-t="bbKvDelta">Deflection δ</div>
+          <div class="bb-kv-val" id="bb-kv-delta">—</div>
+        </div>
+        <div class="bb-kv-cell">
+          <div class="bb-kv-label" data-t="bbKvDu">ΔU voltage drop</div>
+          <div class="bb-kv-val" id="bb-kv-du">—</div>
+        </div>
+      </div>
+
+      <!-- Step-by-step -->
+      <div class="divider" style="margin:14px 0"></div>
+      <div class="res-lbl" data-t="bbStepsHdr">Step-by-Step Calculation</div>
+      <pre class="sb-steps" id="bb-steps"></pre>
+
+      <!-- Engineer + PDF -->
+      <div class="fld" style="margin:10px 0 6px">
+        <label data-t="pdfEngineer">Engineer</label>
+        <div class="fld-inner">
+          <input type="text" id="bb-engineer" data-tp="placeEngineer" placeholder="Name…">
+        </div>
+      </div>
+      <button class="btn-primary" onclick="bbDownloadPdf()" style="margin-top:6px" data-t="bbPdfBtn">⬇ Download PDF</button>
+
+    </div>
+  </div>
+
+</div></div>
+
+<!-- TAB 2 -->
+<div id="pane2" class="tab-pane"><div class="content">
   <div class="card">
     <div class="card-hdr" data-t="convDir">⇄ Směr převodu</div>
     <div class="conv-dir-row">
@@ -434,8 +753,8 @@
 </div></div>
 
 
-<!-- TAB 2 -->
-<div id="pane2" class="tab-pane"><div class="content">
+<!-- TAB 3 -->
+<div id="pane3" class="tab-pane"><div class="content">
 
   <!-- SECTION 1: CONDUCTORS -->
   <div class="card">
@@ -638,8 +957,8 @@
 
 </div></div>
 
-<!-- TAB 3 -->
-<div id="pane3" class="tab-pane"><div class="content">
+<!-- TAB 4 -->
+<div id="pane4" class="tab-pane"><div class="content">
 
   <!-- AC / DC sub-tabs -->
   <div class="sc-subtab-bar">
@@ -1395,8 +1714,8 @@
 
 </div></div>
 
-<!-- TAB 4 -->
-<div id="pane4" class="tab-pane"><div class="content">
+<!-- TAB 5 -->
+<div id="pane5" class="tab-pane"><div class="content">
 
   <div class="card">
     <div class="card-hdr" data-t="mscParamsHdr">📐 Parametry motoru</div>
@@ -1714,8 +2033,8 @@
 
 </div></div>
 
-<!-- TAB 5 — Cable Tray / Conduit Fill -->
-<div id="pane5" class="tab-pane"><div class="content">
+<!-- TAB 6 — Cable Tray / Conduit Fill -->
+<div id="pane6" class="tab-pane"><div class="content">
 
   <!-- Geometry -->
   <div class="card">
@@ -1893,6 +2212,7 @@
 <script src="js/sc.js"></script>
 <script src="js/motor.js"></script>
 <script src="js/tray.js"></script>
+<script src="js/busbar.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
