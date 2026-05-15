@@ -440,6 +440,16 @@
         <span class="fld-unit">—</span>
       </div>
     </div>
+    <div class="fld" style="margin-bottom:12px">
+      <label data-t="bbFreqLabel">System frequency</label>
+      <div class="fld-inner">
+        <select id="bb-freq" style="padding-left:9px;font-size:13px">
+          <option value="50" selected>50 Hz</option>
+          <option value="60">60 Hz</option>
+        </select>
+      </div>
+      <div class="fld-hint" data-t="bbFreqHint">Used for skin effect and reactance (AC only)</div>
+    </div>
     <div class="row c2">
       <div class="fld">
         <label data-t="bbTamb">Ambient temperature T<sub>a</sub></label>
@@ -473,10 +483,10 @@
       <div class="fld">
         <label data-t="bbKappa">Peak factor κ <span class="tt" data-tt="ttBbKappa" tabindex="0">ⓘ</span></label>
         <div class="fld-inner">
-          <input type="number" id="bb-kappa" value="2.2" min="1.0" max="2.2" step="0.01">
+          <input type="number" id="bb-kappa" value="1.8" min="1.0" max="2.0" step="0.01">
           <span class="fld-unit">—</span>
         </div>
-        <div class="fld-hint" data-t="bbKappaHint">IEC 60909: 1.8–2.2; 2.2 = conservative LV</div>
+        <div class="fld-hint" data-t="bbKappaHint">IEC 60909: max 1.8 (LV meshed) / 2.0 (HV or radial LV)</div>
       </div>
     </div>
     <div class="fld">
@@ -507,6 +517,16 @@
         </select>
       </div>
       <div class="fld-hint" data-t="bbInstHint">h_eff = natural convection + radiation coefficient</div>
+    </div>
+    <div class="fld" style="margin-bottom:12px">
+      <label data-t="bbOrientLabel">Bending axis (mechanical)</label>
+      <div class="fld-inner">
+        <select id="bb-orient" style="padding-left:9px;font-size:13px">
+          <option value="edge" selected data-t="bbOrientEdge">On edge — weak axis (t governs)</option>
+          <option value="flat" data-t="bbOrientFlat">Lying flat — strong axis (w governs)</option>
+        </select>
+      </div>
+      <div class="fld-hint" data-t="bbOrientHint">Independent of thermal installation mode</div>
     </div>
     <div class="row c2">
       <div class="fld">
@@ -637,15 +657,19 @@
             <div id="bb-res-sc" class="bb-badge">—</div>
           </div>
           <div class="bb-check-row">
-            <span class="bb-check-lbl" data-t="bbChkMech">§10.2 — Peak force bending stress (σ ≤ σ<sub>y</sub>)</span>
+            <span class="bb-check-lbl" data-t="bbChkMech">§10.2 — Peak-force bending stress (σ ≤ σ<sub>y</sub>) — IEC 61439-1</span>
             <div id="bb-res-mech" class="bb-badge">—</div>
           </div>
           <div class="bb-check-row">
-            <span class="bb-check-lbl" data-t="bbChkDefl">§10.2 — Deflection (δ ≤ L<sub>s</sub>/200)</span>
+            <span class="bb-check-lbl" data-t="bbChkDefl">Deflection (δ ≤ L<sub>s</sub>/200 — engineering practice)</span>
             <div id="bb-res-defl" class="bb-badge">—</div>
           </div>
           <div class="bb-check-row">
-            <span class="bb-check-lbl" data-t="bbChkVd">§10.10.4 — Voltage drop (≤1 % — informational)</span>
+            <span class="bb-check-lbl" data-t="bbChkClear">§10.3 — Air clearance, phase-to-phase (IEC 61439-1 Table 12)</span>
+            <div id="bb-res-clear" class="bb-badge">—</div>
+          </div>
+          <div class="bb-check-row">
+            <span class="bb-check-lbl" data-t="bbChkVd">Voltage drop (≤1 % — design practice, no IEC numeric limit)</span>
             <div id="bb-res-vd" class="bb-badge">—</div>
           </div>
         </div>

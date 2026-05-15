@@ -148,7 +148,7 @@ function resetToDefaults() {
       document.getElementById('bb-length').value   = 2;
       document.getElementById('bb-ik').value       = 10;
       document.getElementById('bb-tsc').value      = '1';
-      document.getElementById('bb-kappa').value    = 2.2;
+      document.getElementById('bb-kappa').value    = 1.8;
       document.getElementById('bb-inst').value     = 'flat_h';
       document.getElementById('bb-lsupp').value    = 500;
       document.getElementById('bb-dcc').value      = 100;

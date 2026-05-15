@@ -58,7 +58,7 @@ function pdfSafe(s) {
   };
   return String(s).replace(/[\s\S]/g, c => {
     if (MAP[c] !== undefined) return MAP[c];
-    if (c.charCodeAt(0) > 0xFF) return '?';
+    if (c.charCodeAt(0) > 0xFF) return '';
     return c;
   });
 }
