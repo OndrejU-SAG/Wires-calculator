@@ -371,36 +371,177 @@ function _bbKV(id, val) {
 function bbDownloadPdf() {
   if (typeof window.jspdf === 'undefined') { alert('jsPDF not loaded'); return; }
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
-  const eng   = (document.getElementById('bb-engineer') || {}).value || '';
-  const steps = (document.getElementById('bb-steps')    || {}).textContent || '';
-  const matEl = document.querySelector('[data-bb-mat].active') || document.querySelector('[data-bb-mat]');
-  const M     = BB_MAT[matEl ? matEl.dataset.bbMat : 'cu'];
-  const w     = parseFloat(document.getElementById('bb-width').value);
-  const t     = parseFloat(document.getElementById('bb-thick').value);
-  const n     = parseInt(document.getElementById('bb-parallel').value, 10);
+  const btn = document.getElementById('bb-pdf-btn');
+  if (btn) { btn.textContent = 'Generating…'; btn.disabled = true; }
 
-  const title = T[lang].bbPdfTitle || 'Bus Bar Sizing — IEC 61439-1';
+  try {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const PW = 210, PH = 297, M = 15;
 
-  if (typeof pdfHeader === 'function') {
-    pdfHeader(doc, title, eng);
-  } else {
-    doc.setFontSize(16); doc.text(title, 15, 20);
-    if (eng) { doc.setFontSize(10); doc.text('Engineer: ' + eng, 15, 28); }
+    const engineer = (document.getElementById('bb-engineer') || {}).value || '';
+    const stepsRaw = (document.getElementById('bb-steps')    || {}).textContent || '';
+    const matEl    = document.querySelector('[data-bb-mat].active') || document.querySelector('[data-bb-mat]');
+    const mat      = BB_MAT[matEl ? matEl.dataset.bbMat : 'cu'];
+    const w        = parseFloat(document.getElementById('bb-width').value);
+    const t        = parseFloat(document.getElementById('bb-thick').value);
+    const n        = parseInt(document.getElementById('bb-parallel').value, 10) || 1;
+
+    const title    = T[lang].bbPdfTitle || 'Bus Bar Sizing — IEC 61439-1';
+    const standard = 'IEC 61439-1:2011 / IEC 60865-1';
+    const ACC      = [0, 80, 160];
+
+    /* ── count pages first (results page + steps pages) ── */
+    const lineH    = 4.0;
+    const pageBody = PH - M - 22 - (M + 8);  // usable height per steps page
+    const stepsLines = stepsRaw.split('\n');
+    const stepsPages = Math.max(1, Math.ceil(stepsLines.length * lineH / pageBody));
+    const TOTAL_PAGES = 1 + stepsPages;
+
+    function drawHeader() {
+      pdfMakeHeader(doc, { PW, M, title: pdfSafe(title) });
+    }
+    function drawFooter(pageNum) {
+      pdfMakeFooter(doc, { PW, PH, M, pageNum, totalPages: TOTAL_PAGES, engineer, standard });
+    }
+    function secTitle(y, text) {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...ACC);
+      doc.text(pdfSafe(text), M, y); y += 4.5;
+      doc.setDrawColor(200, 210, 225); doc.setLineWidth(0.2);
+      doc.line(M, y, PW - M, y); y += 4;
+      doc.setTextColor(40, 40, 40);
+      return y;
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       PAGE 1 — Results summary
+       ════════════════════════════════════════════════════════════ */
+    drawHeader();
+    drawFooter(1);
+    let y = M + 22;
+
+    y = secTitle(y, (T[lang].bbChecksHdr || 'IEC 61439-1 Compliance Checks') + '  — ' + pdfSafe(mat.label) + '  ' + w + '\xd7' + t + ' mm  \xd7' + n);
+
+    /* collect check rows from the DOM */
+    const checkIds = [
+      { id: 'bb-res-dt',      label: T[lang].bbChkDt      || 'Temperature rise (busbar)' },
+      { id: 'bb-res-term-dt', label: T[lang].bbChkTermDt  || 'Temperature rise (terminals)' },
+      { id: 'bb-res-amp',     label: T[lang].bbChkAmp     || 'Ampacity' },
+      { id: 'bb-res-sc',      label: T[lang].bbChkSc      || 'Short-circuit thermal withstand' },
+      { id: 'bb-res-mech',    label: T[lang].bbChkMech    || 'Mechanical (bending stress)' },
+      { id: 'bb-res-defl',    label: T[lang].bbChkDefl    || 'Deflection' },
+      { id: 'bb-res-vd',      label: T[lang].bbChkVd      || 'Voltage drop (informational)' },
+    ];
+
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+    checkIds.forEach(({ id, label }) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const txt   = pdfSafe(el.textContent || '');
+      const isPas = el.classList.contains('bb-pass');
+      const isFai = el.classList.contains('bb-fail');
+      const isWar = el.classList.contains('bb-warn');
+      const statusColor = isPas ? [0, 140, 80] : isFai ? [200, 50, 50] : isWar ? [180, 120, 0] : [80, 80, 80];
+
+      if (y > PH - M - 14) { doc.addPage(); drawHeader(); drawFooter(1); y = M + 22; }
+
+      doc.setTextColor(40, 40, 40);
+      doc.text(pdfSafe(label), M, y);
+      doc.setTextColor(...statusColor);
+      doc.text(txt, PW - M, y, { align: 'right' });
+      doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.15);
+      doc.line(M, y + 1.5, PW - M, y + 1.5);
+      y += 6.5;
+    });
+
+    /* overall verdict */
+    y += 3;
+    const verdictEl = document.getElementById('bb-verdict');
+    if (verdictEl) {
+      const isPass = verdictEl.classList.contains('bb-pass');
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(isPass ? 0 : 200, isPass ? 140 : 50, isPass ? 80 : 50);
+      doc.text(pdfSafe(verdictEl.textContent || ''), M, y);
+      y += 8;
+    }
+
+    /* key-value grid */
+    y += 2;
+    if (y < PH - M - 40) {
+      y = secTitle(y, T[lang].bbKvHdr || 'Key Values');
+      const kvIds = [
+        { id: 'bb-kv-dt',     label: T[lang].bbKvDt     || 'dT' },
+        { id: 'bb-kv-theta',  label: T[lang].bbKvTheta  || 'theta_op' },
+        { id: 'bb-kv-iz-bus', label: T[lang].bbKvIzBus  || 'Iz (busbar)' },
+        { id: 'bb-kv-iz-term',label: T[lang].bbKvIzTerm || 'Iz (terminal)' },
+        { id: 'bb-kv-smin',   label: T[lang].bbKvSmin   || 'S_min' },
+        { id: 'bb-kv-stotal', label: T[lang].bbKvStotal || 'S_total' },
+        { id: 'bb-kv-ipk',    label: T[lang].bbKvIpk    || 'I_pk' },
+        { id: 'bb-kv-fem',    label: T[lang].bbKvFem    || 'f_em' },
+        { id: 'bb-kv-sigma',  label: T[lang].bbKvSigma  || 'sigma_max' },
+        { id: 'bb-kv-delta',  label: T[lang].bbKvDelta  || 'delta' },
+        { id: 'bb-kv-du',     label: T[lang].bbKvDu     || 'dU%' },
+      ];
+      const colW = (PW - 2 * M) / 3;
+      doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+      kvIds.forEach(({ id, label }, i) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const col = i % 3;
+        const xPos = M + col * colW;
+        if (col === 0 && i > 0) y += 9;
+        if (y > PH - M - 14) { doc.addPage(); drawHeader(); drawFooter(1); y = M + 22; }
+        doc.setTextColor(100, 100, 100);
+        doc.text(pdfSafe(label), xPos, y);
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 80, 160);
+        doc.text(pdfSafe(el.textContent || ''), xPos, y + 4);
+        doc.setFont('helvetica', 'normal');
+      });
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       PAGE 2+ — Step-by-step calculation
+       ════════════════════════════════════════════════════════════ */
+    doc.addPage();
+    drawHeader();
+    drawFooter(2);
+    y = M + 22;
+    let curPage = 2;
+
+    y = secTitle(y, (T[lang].bbStepsHdr || 'Step-by-Step Calculation') + '  (IEC 61439-1 / IEC 60865-1)');
+
+    doc.setFontSize(8.0); doc.setFont('courier', 'normal'); doc.setTextColor(30, 30, 30);
+    stepsLines.forEach(rawLine => {
+      if (!rawLine.trim()) { y += 2; return; }
+
+      /* section headers: lines starting with == */
+      const isSec = /^[=═]{2}/.test(rawLine);
+      if (isSec) {
+        if (y > PH - M - 18) {
+          curPage++;
+          doc.addPage(); drawHeader(); drawFooter(curPage); y = M + 22;
+        }
+        doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...ACC);
+        doc.text(pdfSafe(rawLine), M, y); y += 4.5;
+        doc.setDrawColor(200, 210, 225); doc.setLineWidth(0.15);
+        doc.line(M, y, PW - M, y); y += 3.5;
+        doc.setFontSize(8.0); doc.setFont('courier', 'normal'); doc.setTextColor(30, 30, 30);
+        return;
+      }
+
+      if (y > PH - M - 8) {
+        curPage++;
+        doc.addPage(); drawHeader(); drawFooter(curPage); y = M + 22;
+      }
+      const indented = rawLine.startsWith('  ');
+      doc.text(pdfSafe(rawLine.trimStart()), M + (indented ? 5 : 0), y);
+      y += lineH;
+    });
+
+    const fn = 'busbar_IEC61439_' + pdfSafe(mat.label) + '_' + w + 'x' + t + 'mm' + (n > 1 ? '_' + n + 'bars' : '') + '.pdf';
+    doc.save(fn);
+  } finally {
+    if (btn) { btn.textContent = T[lang].bbPdfBtn || 'Export PDF'; btn.disabled = false; }
   }
-
-  const y0     = typeof pdfHeader === 'function' ? 50 : 36;
-  const margin = 15, lineH = 4.4, pageH = 282;
-  let y = y0;
-  doc.setFontSize(8.5);
-  doc.setFont('courier', 'normal');
-  steps.split('\n').forEach(line => {
-    if (y + lineH > pageH) { doc.addPage(); y = 15; }
-    doc.text(line, margin, y);
-    y += lineH;
-  });
-
-  const fn = `busbar_IEC61439_${M.label}_${w}x${t}mm${n > 1 ? `_${n}bars` : ''}.pdf`;
-  doc.save(fn);
 }

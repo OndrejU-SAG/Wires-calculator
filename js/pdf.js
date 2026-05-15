@@ -41,6 +41,9 @@ function pdfSafe(s) {
     // Status symbols
     '✓': 'OK',   '⚠': '(!)',  // check mark, warning
     '✗': 'X',                  // ballot X
+    '✅': '[OK]', '❌': '[FAIL]', // emoji check/cross
+    // Box-drawing (used in busbar steps headers)
+    '═': '=',    '─': '-',    '│': '|',
   };
   return String(s).replace(/[\s\S]/g, c => {
     if (MAP[c] !== undefined) return MAP[c];
@@ -116,7 +119,7 @@ function pdfMakeFooter(doc, { PW, PH, M, pageNum, totalPages, engineer, standard
 /* ─── Engineer name persistence ─────────────────────────────────────────── */
 function _pdfEngineerInit() {
   const saved = localStorage.getItem(_PDF_ENGINEER_KEY) || '';
-  const ids = ['sb-engineer', 'sc-engineer', 'dc-engineer', 'tray-engineer', 'calc-engineer', 'msc-engineer', 'iec-engineer'];
+  const ids = ['sb-engineer', 'sc-engineer', 'dc-engineer', 'tray-engineer', 'calc-engineer', 'msc-engineer', 'iec-engineer', 'bb-engineer'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
